@@ -21,31 +21,17 @@ import { UserRepository } from '../user/user.repository';
     PassportModule,
 
     JwtModule.registerAsync({
-      imports: [ConfigModule],
-
       inject: [ConfigService],
 
-      useFactory: async (configService: ConfigService) => {
-        const jwtSecret = configService.get<string>('JWT_ACCESS_SECRET');
+      useFactory: async (configService: ConfigService) => ({
+        secret:
+          configService.get<string>('JWT_ACCESS_SECRET') || 'access_secret',
 
-        const jwtExpiresIn = configService.get<string>('JWT_ACCESS_EXPIRES');
-
-        if (!jwtSecret) {
-          throw new Error('JWT_ACCESS_SECRET is missing');
-        }
-
-        if (!jwtExpiresIn) {
-          throw new Error('JWT_ACCESS_EXPIRES is missing');
-        }
-
-        return {
-          secret: jwtSecret,
-
-          signOptions: {
-            expiresIn: jwtExpiresIn as '1d',
-          },
-        };
-      },
+        signOptions: {
+          expiresIn: (configService.get<string>('JWT_ACCESS_EXPIRES_IN') ||
+            '15m') as any,
+        },
+      }),
     }),
   ],
 
