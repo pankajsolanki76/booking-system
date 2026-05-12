@@ -2,9 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { CreateShowDto } from './dto/create-show.dto';
 
+import { ShowRepository } from './show.repository';
+
 import { EventRepository } from '../event/event.repository';
 
-import { ShowRepository } from './show.repository';
+import { ScreenRepository } from '../screen/screen.repository';
 
 @Injectable()
 export class ShowService {
@@ -12,6 +14,8 @@ export class ShowService {
     private readonly showRepository: ShowRepository,
 
     private readonly eventRepository: EventRepository,
+
+    private readonly screenRepository: ScreenRepository,
   ) {}
 
   async create(createShowDto: CreateShowDto) {
@@ -21,14 +25,22 @@ export class ShowService {
       throw new BadRequestException('Invalid event');
     }
 
+    const screen = await this.screenRepository.findById(createShowDto.screenId);
+
+    if (!screen) {
+      throw new BadRequestException('Invalid screen');
+    }
+
     return this.showRepository.create({
-      ...createShowDto,
+      eventId: createShowDto.eventId,
+
+      screenId: createShowDto.screenId,
 
       startTime: new Date(createShowDto.startTime),
 
       endTime: new Date(createShowDto.endTime),
 
-      availableSeats: createShowDto.totalSeats,
+      availableSeats: screen.totalSeats,
     });
   }
 

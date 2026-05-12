@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
 import { EventModule } from './event/event.module';
 import { ShowModule } from './show/show.module';
+import { VenueModule } from './venue/venue.module';
+import { ScreenModule } from './screen/screen.module';
+import { SeatModule } from './seat/seat.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { ShowModule } from './show/show.module';
     CategoryModule,
     EventModule,
     ShowModule,
+    VenueModule,
+    ScreenModule,
+    SeatModule,
   ],
 })
 export class AppModule {}

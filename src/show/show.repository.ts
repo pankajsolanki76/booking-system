@@ -4,9 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ShowRepository {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(data: any) {
     return this.prisma.show.create({
@@ -22,6 +20,12 @@ export class ShowRepository {
         event: {
           include: {
             category: true,
+          },
+        },
+
+        screen: {
+          include: {
+            venue: true,
           },
         },
       },
