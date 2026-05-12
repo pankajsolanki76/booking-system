@@ -4,7 +4,7 @@ import { SeatController } from './seat.controller';
 import { SeatService } from './seat.service';
 
 import { SeatRepository } from './seat.repository';
-import { ScreenModule } from 'src/screen/screen.module';
+import { ScreenModule } from '../screen/screen.module';
 
 @Module({
   imports: [ScreenModule],

@@ -9,7 +9,7 @@ export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const { ip, method, originalUrl } = req;
     const userAgent = req.get('user-agent') || '';
-    
+
     // Generate a unique Request ID
     const reqId = crypto.randomUUID();
     req['reqId'] = reqId; // Attach to request

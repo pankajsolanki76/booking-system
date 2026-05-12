@@ -12,14 +12,8 @@ import { CategoryModule } from '../category/category.module';
 
   controllers: [EventController],
 
-  providers: [
-    EventService,
-    EventRepository,
-  ],
+  providers: [EventService, EventRepository],
 
-  exports: [
-    EventService,
-    EventRepository,
-  ],
+  exports: [EventService, EventRepository],
 })
 export class EventModule {}

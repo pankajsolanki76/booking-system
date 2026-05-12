@@ -14,22 +14,15 @@ import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
 
 @Injectable()
 export class CategoryService {
-  constructor(
-    private readonly categoryRepository: CategoryRepository,
-  ) {}
+  constructor(private readonly categoryRepository: CategoryRepository) {}
 
-  async create(
-    createCategoryDto: CreateCategoryDto,
-  ) {
-    const existing =
-      await this.categoryRepository.findByName(
-        createCategoryDto.name,
-      );
+  async create(createCategoryDto: CreateCategoryDto) {
+    const existing = await this.categoryRepository.findByName(
+      createCategoryDto.name,
+    );
 
     if (existing) {
-      throw new BadRequestException(
-        'Category already exists',
-      );
+      throw new BadRequestException('Category already exists');
     }
 
     const slug = await generateUniqueSlug(
@@ -44,22 +37,14 @@ export class CategoryService {
   }
 
   async findAll(query: QueryCategoryDto) {
-    return this.categoryRepository.findAll(
-      query.search,
-    );
+    return this.categoryRepository.findAll(query.search);
   }
 
-  async update(
-    id: string,
-    updateCategoryDto: UpdateCategoryDto,
-  ) {
-    const category =
-      await this.categoryRepository.findById(id);
+  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    const category = await this.categoryRepository.findById(id);
 
     if (!category) {
-      throw new NotFoundException(
-        'Category not found',
-      );
+      throw new NotFoundException('Category not found');
     }
 
     let slugUpdate = {};
@@ -81,13 +66,10 @@ export class CategoryService {
   }
 
   async remove(id: string) {
-    const category =
-      await this.categoryRepository.findById(id);
+    const category = await this.categoryRepository.findById(id);
 
     if (!category) {
-      throw new NotFoundException(
-        'Category not found',
-      );
+      throw new NotFoundException('Category not found');
     }
 
     await this.categoryRepository.delete(id);

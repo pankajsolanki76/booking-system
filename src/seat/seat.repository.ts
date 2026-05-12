@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SeatRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createScreenSeat(data: any) {
+  async createScreenSeat(data: Prisma.ScreenSeatUncheckedCreateInput) {
     return this.prisma.screenSeat.create({
       data,
     });
@@ -17,7 +18,7 @@ export class SeatRepository {
     });
   }
 
-  async createShowSeats(data: any[]) {
+  async createShowSeats(data: Prisma.ShowSeatUncheckedCreateInput[]) {
     return this.prisma.showSeat.createMany({
       data,
     });
@@ -49,7 +50,11 @@ export class SeatRepository {
       },
     });
   }
-  async lockSeats(tx: any, seatIds: string[], expiresAt: Date) {
+  async lockSeats(
+    tx: Prisma.TransactionClient,
+    seatIds: string[],
+    expiresAt: Date,
+  ) {
     return tx.showSeat.updateMany({
       where: {
         id: {
@@ -68,7 +73,7 @@ export class SeatRepository {
       },
     });
   }
-  async bookSeats(tx: any, seatIds: string[]) {
+  async bookSeats(tx: Prisma.TransactionClient, seatIds: string[]) {
     return tx.showSeat.updateMany({
       where: {
         id: {
@@ -85,7 +90,7 @@ export class SeatRepository {
       },
     });
   }
-  async releaseSeats(tx: any, seatIds: string[]) {
+  async releaseSeats(tx: Prisma.TransactionClient, seatIds: string[]) {
     return tx.showSeat.updateMany({
       where: {
         id: {

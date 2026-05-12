@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaBaseRepository } from '../common/repositories/base.repository';
-import { Venue } from '@prisma/client';
+import { Venue, Prisma } from '@prisma/client';
+
+import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';
+
+export interface VenueFindAllQuery extends BaseFindAllQuery {
+  city?: string;
+}
 
 @Injectable()
 export class VenueRepository extends PrismaBaseRepository<Venue> {
@@ -32,10 +38,16 @@ export class VenueRepository extends PrismaBaseRepository<Venue> {
     });
   }
 
-  async findAll(query: any) {
-    const { skip, take, city, sortBy, sortOrder } = query;
+  async findAll(query: VenueFindAllQuery) {
+    const {
+      skip,
+      take,
+      city,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
 
-    const where: any = {};
+    const where: Prisma.VenueWhereInput = {};
 
     if (city) {
       where.city = {

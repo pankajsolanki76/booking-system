@@ -26,8 +26,6 @@ export class EventService {
     private readonly categoryRepository: CategoryRepository,
   ) {}
 
-
-
   async create(createEventDto: CreateEventDto) {
     const category = await this.categoryRepository.findById(
       createEventDto.categoryId,

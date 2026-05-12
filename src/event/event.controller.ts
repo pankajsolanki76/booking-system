@@ -1,9 +1,13 @@
-import { Body, Controller, Get, Param, Post, Patch, Delete } from '@nestjs/common';
 import {
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Patch,
+  Delete,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';

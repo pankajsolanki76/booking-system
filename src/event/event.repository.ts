@@ -1,7 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { PrismaBaseRepository } from '../common/repositories/base.repository';
-import { Event } from '@prisma/client';
+import { Event, Prisma } from '@prisma/client';
+
+import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';
+
+export interface EventFindAllQuery extends BaseFindAllQuery {
+  search?: string;
+  categoryId?: string;
+}
 
 @Injectable()
 export class EventRepository extends PrismaBaseRepository<Event> {
@@ -22,10 +26,17 @@ export class EventRepository extends PrismaBaseRepository<Event> {
     });
   }
 
-  async findAll(query: any) {
-    const { skip, take, search, categoryId, sortBy, sortOrder } = query;
+  async findAll(query: EventFindAllQuery) {
+    const {
+      skip,
+      take,
+      search,
+      categoryId,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
 
-    const where: any = {};
+    const where: Prisma.EventWhereInput = {};
 
     if (search) {
       where.title = {

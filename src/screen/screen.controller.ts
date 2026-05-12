@@ -1,9 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ScreenService } from './screen.service';
 import { CreateScreenDto } from './dto/create-screen.dto';

@@ -25,9 +25,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const responseData = exception.getResponse();
-      message = (typeof responseData === 'object' && responseData !== null && 'message' in responseData)
-        ? (responseData as any).message 
-        : exception.message;
+      message =
+        typeof responseData === 'object' &&
+        responseData !== null &&
+        'message' in responseData
+          ? (responseData as any).message
+          : exception.message;
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       switch (exception.code) {
         case 'P2002':
@@ -36,7 +39,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
           break;
         case 'P2003':
           status = HttpStatus.BAD_REQUEST;
-          message = 'Related record not found or foreign key constraint failed.';
+          message =
+            'Related record not found or foreign key constraint failed.';
           break;
         case 'P2025':
           status = HttpStatus.NOT_FOUND;

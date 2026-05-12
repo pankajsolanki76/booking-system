@@ -126,6 +126,41 @@ pnpm run test
 pnpm run test:e2e
 ```
 
+---
+
+## 🚀 Deployment
+
+The project is ready for deployment using **Docker**.
+
+### Using Docker
+
+1. **Build the image**:
+   ```bash
+   docker build -t booking-system .
+   ```
+
+2. **Run the container**:
+   ```bash
+   docker run -p 3000:3000 --env-file .env booking-system
+   ```
+
+### Deployment without Docker (Direct Node.js)
+
+#### 1. Render.com (Node.js Web Service)
+1. **Build Command**: `pnpm install && pnpm run build && npx prisma generate`
+2. **Start Command**: `npx prisma migrate deploy && pnpm run start:prod`
+
+#### 2. Railway.app
+1. Railway will automatically detect the Node.js environment.
+2. Set the **Start Command** in the Railway dashboard to: `npx prisma migrate deploy && pnpm run start:prod`
+
+#### 3. Manual VPS (Ubuntu/Nginx)
+1. Install Node.js, pnpm, and PostgreSQL.
+2. Clone the repo and install dependencies: `pnpm install`
+3. Build the project: `pnpm run build`
+4. Run migrations: `npx prisma migrate deploy`
+5. Use **PM2** to run the app: `pm2 start dist/main.js --name booking-api`
+
 ## 📜 License
 
 This project is [UNLICENSED](LICENSE).

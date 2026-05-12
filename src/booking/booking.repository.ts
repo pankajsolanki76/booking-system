@@ -1,18 +1,25 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, Booking, BookingSeat } from '@prisma/client';
+import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';
 
 @Injectable()
 export class BookingRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createBooking(tx: any, data: any) {
+  async createBooking(
+    tx: Prisma.TransactionClient,
+    data: Prisma.BookingUncheckedCreateInput,
+  ): Promise<Booking> {
     return tx.booking.create({
       data,
     });
   }
 
-  async createBookingSeats(tx: any, data: any[]) {
+  async createBookingSeats(
+    tx: Prisma.TransactionClient,
+    data: Prisma.BookingSeatUncheckedCreateInput[],
+  ) {
     return tx.bookingSeat.createMany({
       data,
     });
@@ -42,7 +49,7 @@ export class BookingRepository {
       },
     });
   }
-  async expireBooking(tx: any, bookingId: string) {
+  async expireBooking(tx: Prisma.TransactionClient, bookingId: string) {
     return tx.booking.update({
       where: {
         id: bookingId,
@@ -57,9 +64,9 @@ export class BookingRepository {
   async findUserBookings(
     userId: string,
 
-    query: any,
+    query: BaseFindAllQuery,
   ) {
-    const { skip, take, sortBy, sortOrder } = query;
+    const { skip, take, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
     const where = {
       userId,

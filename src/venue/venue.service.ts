@@ -4,7 +4,7 @@ import { CreateVenueDto } from './dto/create-venue.dto';
 
 import { VenueRepository } from './venue.repository';
 
-import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
+import { generateUniqueSlug } from '../common/utils/slugify.util';
 import { QueryVenueDto } from './dto/query-venue.dto';
 
 import { buildPagination } from '../common/utils/pagination.util';

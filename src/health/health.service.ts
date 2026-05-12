@@ -6,7 +6,7 @@ export class HealthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async check() {
-    await this.prisma.$queryRaw`SELECT 1`;
+    await this.prisma.$queryRaw<number[]>`SELECT 1`;
 
     return {
       success: true,
