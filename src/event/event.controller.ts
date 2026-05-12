@@ -56,14 +56,6 @@ export class EventController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all events',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Events fetched successfully',
-  })
-  @Get()
-  @ApiOperation({
     summary: 'Get paginated events',
   })
   @ApiResponse({

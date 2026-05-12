@@ -4,7 +4,7 @@ import { CreateVenueDto } from './dto/create-venue.dto';
 
 import { VenueRepository } from './venue.repository';
 
-import { slugify } from '../common/utils/slugify.util';
+import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
 import { QueryVenueDto } from './dto/query-venue.dto';
 
 import { buildPagination } from '../common/utils/pagination.util';
@@ -24,10 +24,14 @@ export class VenueService {
       throw new BadRequestException('Venue already exists');
     }
 
+    const slug = await generateUniqueSlug(
+      createVenueDto.name,
+      async (s) => !!(await this.venueRepository.findBySlug(s)),
+    );
+
     return this.venueRepository.create({
       ...createVenueDto,
-
-      slug: slugify(createVenueDto.name),
+      slug,
     });
   }
 

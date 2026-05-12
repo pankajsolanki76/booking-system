@@ -22,6 +22,12 @@ export class EventRepository {
       },
     });
   }
+
+  async findBySlug(slug: string) {
+    return this.prisma.event.findUnique({
+      where: { slug },
+    });
+  }
   async findAll(query: any) {
     const { skip, take, search, categoryId, sortBy, sortOrder } = query;
 

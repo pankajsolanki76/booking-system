@@ -6,7 +6,7 @@ import {
 
 import { CategoryRepository } from '../category/category.repository';
 
-import { slugify } from '../common/utils/slugify.util';
+import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
 
 import { CreateEventDto } from './dto/create-event.dto';
 
@@ -26,6 +26,8 @@ export class EventService {
     private readonly categoryRepository: CategoryRepository,
   ) {}
 
+
+
   async create(createEventDto: CreateEventDto) {
     const category = await this.categoryRepository.findById(
       createEventDto.categoryId,
@@ -35,10 +37,15 @@ export class EventService {
       throw new BadRequestException('Invalid category');
     }
 
+    const slug = await generateUniqueSlug(
+      createEventDto.title,
+      async (s) => !!(await this.eventRepository.findBySlug(s)),
+    );
+
     return this.eventRepository.create({
       ...createEventDto,
 
-      slug: slugify(createEventDto.title),
+      slug,
     });
   }
 
@@ -98,12 +105,22 @@ export class EventService {
       }
     }
 
+    let slugUpdate = {};
+    if (updateEventDto.title) {
+      const newSlug = await generateUniqueSlug(
+        updateEventDto.title,
+        async (s) => {
+          const existing = await this.eventRepository.findBySlug(s);
+          return !!existing && existing.id !== id;
+        },
+      );
+      slugUpdate = { slug: newSlug };
+    }
+
     return this.eventRepository.update(id, {
       ...updateEventDto,
 
-      ...(updateEventDto.title && {
-        slug: slugify(updateEventDto.title),
-      }),
+      ...slugUpdate,
     });
   }
 

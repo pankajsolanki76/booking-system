@@ -10,7 +10,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { QueryCategoryDto } from './dto/query-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
-import { slugify } from '../common/utils/slugify.util';
+import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
 
 @Injectable()
 export class CategoryService {
@@ -32,8 +32,9 @@ export class CategoryService {
       );
     }
 
-    const slug = slugify(
+    const slug = await generateUniqueSlug(
       createCategoryDto.name,
+      async (s) => !!(await this.categoryRepository.findBySlug(s)),
     );
 
     return this.categoryRepository.create({
@@ -61,12 +62,21 @@ export class CategoryService {
       );
     }
 
+    let slugUpdate = {};
+    if (updateCategoryDto.name) {
+      const newSlug = await generateUniqueSlug(
+        updateCategoryDto.name,
+        async (s) => {
+          const existing = await this.categoryRepository.findBySlug(s);
+          return !!existing && existing.id !== id;
+        },
+      );
+      slugUpdate = { slug: newSlug };
+    }
+
     return this.categoryRepository.update(id, {
       ...updateCategoryDto,
-
-      slug: updateCategoryDto.name
-        ? slugify(updateCategoryDto.name)
-        : category.slug,
+      ...slugUpdate,
     });
   }
 

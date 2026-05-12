@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsIn } from 'class-validator';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -11,4 +11,8 @@ export class QueryVenueDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsIn(['createdAt', 'updatedAt', 'name', 'city'])
+  override sortBy?: string = 'createdAt';
 }

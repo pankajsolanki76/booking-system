@@ -1,19 +1,7 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
-export class QueryEventDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number;
-
+export class QueryEventDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
@@ -23,10 +11,6 @@ export class QueryEventDto {
   categoryId?: string;
 
   @IsOptional()
-  @IsString()
-  sortBy?: string;
-
-  @IsOptional()
-  @IsString()
-  sortOrder?: 'asc' | 'desc';
+  @IsIn(['createdAt', 'updatedAt', 'title', 'durationMins'])
+  override sortBy?: string = 'createdAt';
 }

@@ -23,6 +23,12 @@ export class VenueRepository {
     });
   }
 
+  async findBySlug(slug: string) {
+    return this.prisma.venue.findUnique({
+      where: { slug },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.venue.findUnique({
       where: { id },
