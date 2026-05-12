@@ -1,3 +1,6 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
 import { Event, Prisma } from '@prisma/client';
 
 import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';

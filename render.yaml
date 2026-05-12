@@ -3,7 +3,7 @@ services:
     name: booking-system-api
     runtime: node
     plan: free
-    buildCommand: pnpm install && pnpm run build && npx prisma generate
+    buildCommand: pnpm install && npx prisma generate && pnpm run build
     startCommand: npx prisma migrate deploy && pnpm run start:prod
     envVars:
       - key: PORT

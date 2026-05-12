@@ -1,8 +1,8 @@
 import { Show, Prisma } from '@prisma/client';
 import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';
 import { Injectable } from '@nestjs/common';
-import { PrismaBaseRepository } from 'src/common/repositories/base.repository';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface ShowFindAllQuery extends BaseFindAllQuery {
   eventId?: string;
