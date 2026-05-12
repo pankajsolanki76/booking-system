@@ -8,7 +8,7 @@ import { PrismaService } from './prisma/prisma.service';
 
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { setupSwagger } from './common/config/swagger.config';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
@@ -38,7 +38,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   // REGISTER EXCEPTION FILTER
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const prismaService = app.get(PrismaService);
 
