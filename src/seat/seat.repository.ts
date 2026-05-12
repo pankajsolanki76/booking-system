@@ -68,4 +68,38 @@ export class SeatRepository {
       },
     });
   }
+  async bookSeats(tx: any, seatIds: string[]) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
+
+        status: 'LOCKED',
+      },
+
+      data: {
+        status: 'BOOKED',
+
+        bookedAt: new Date(),
+      },
+    });
+  }
+  async releaseSeats(tx: any, seatIds: string[]) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
+      },
+
+      data: {
+        status: 'AVAILABLE',
+
+        lockedAt: null,
+
+        lockedUntil: null,
+      },
+    });
+  }
 }

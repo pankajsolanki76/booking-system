@@ -71,6 +71,8 @@ model Booking {
   expiresAt DateTime
 
   confirmedAt DateTime?
+  
+  payment Payment?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -251,4 +253,22 @@ model BookingSeat {
 
   @@unique([bookingId, showSeatId])
   @@index([showSeatId])
+}
+model Payment {
+  id              String          @id @default(cuid())
+
+  bookingId       String          @unique
+  booking         Booking         @relation(fields: [bookingId], references: [id])
+
+  amount          Decimal         @db.Decimal(10, 2)
+
+  status          PaymentStatus
+
+  transactionRef  String?
+
+  paidAt          DateTime?
+
+  createdAt       DateTime        @default(now())
+
+  @@index([status])
 }

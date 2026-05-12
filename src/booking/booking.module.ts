@@ -13,5 +13,6 @@ import { SeatModule } from '../seat/seat.module';
   controllers: [BookingController],
 
   providers: [BookingService, BookingRepository],
+  exports: [BookingRepository],
 })
 export class BookingModule {}

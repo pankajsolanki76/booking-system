@@ -23,27 +23,7 @@ export class BookingRepository {
       where: { id },
 
       include: {
-        bookingSeats: {
-          include: {
-            showSeat: {
-              include: {
-                screenSeat: true,
-              },
-            },
-          },
-        },
-
-        show: {
-          include: {
-            event: true,
-
-            screen: {
-              include: {
-                venue: true,
-              },
-            },
-          },
-        },
+        bookingSeats: true,
       },
     });
   }
