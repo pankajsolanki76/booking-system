@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import compression from 'compression';
 import helmet from 'helmet';
@@ -10,9 +10,11 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { setupSwagger } from './common/config/swagger.config';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   setupSwagger(app);
 
   app.use(helmet());
@@ -46,7 +48,7 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`Application running on port ${port}`);
+  Logger.log(`Application running on port ${port}`, 'Bootstrap');
 }
 
 bootstrap();

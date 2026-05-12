@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,6 +14,9 @@ import { SeatModule } from './seat/seat.module';
 import { BookingModule } from './booking/booking.module';
 import { PaymentModule } from './payment/payment.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { WinstonModule } from 'nest-winston';
+import { winstonConfig } from './common/logger/winston.config';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -22,6 +25,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
 
     ScheduleModule.forRoot(),
+    WinstonModule.forRoot(winstonConfig),
 
     PrismaModule,
     HealthModule,
@@ -37,4 +41,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     PaymentModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
