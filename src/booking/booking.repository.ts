@@ -53,39 +53,63 @@ export class BookingRepository {
       },
     });
   }
-  async findUserBookings(userId: string) {
-    return this.prisma.booking.findMany({
-      where: {
-        userId,
-      },
 
-      include: {
-        bookingSeats: {
-          include: {
-            showSeat: {
-              include: {
-                screenSeat: true,
+  async findUserBookings(
+    userId: string,
+
+    query: any,
+  ) {
+    const { skip, take, sortBy, sortOrder } = query;
+
+    const where = {
+      userId,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+
+        skip,
+
+        take,
+
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+
+        include: {
+          bookingSeats: {
+            include: {
+              showSeat: {
+                include: {
+                  screenSeat: true,
+                },
+              },
+            },
+          },
+
+          show: {
+            include: {
+              event: true,
+
+              screen: {
+                include: {
+                  venue: true,
+                },
               },
             },
           },
         },
+      }),
 
-        show: {
-          include: {
-            event: true,
+      this.prisma.booking.count({
+        where,
+      }),
+    ]);
 
-            screen: {
-              include: {
-                venue: true,
-              },
-            },
-          },
-        },
-      },
-
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return {
+      data,
+      total,
+    };
   }
 }

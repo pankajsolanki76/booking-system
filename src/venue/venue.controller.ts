@@ -19,6 +19,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
 import { Role } from '../common/enums/role.enum';
+import { QueryVenueDto } from './dto/query-venue.dto';
 
 @ApiTags('Venues')
 @ApiBearerAuth('JWT-auth')
@@ -53,18 +54,13 @@ export class VenueController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all venues',
-  })
-  @ApiQuery({
-    name: 'city',
-    required: false,
-    description: 'Filter venues by city',
+    summary: 'Get paginated venues',
   })
   @ApiResponse({
     status: 200,
     description: 'Venues fetched successfully',
   })
-  async findAll(@Query('city') city?: string) {
-    return this.venueService.findAll(city);
+  async findAll(@Query() query: QueryVenueDto) {
+    return this.venueService.findAll(query);
   }
 }

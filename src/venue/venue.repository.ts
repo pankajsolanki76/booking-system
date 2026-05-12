@@ -33,24 +33,43 @@ export class VenueRepository {
     });
   }
 
-  async findAll(city?: string) {
-    return this.prisma.venue.findMany({
-      where: city
-        ? {
-            city: {
-              equals: city,
-              mode: 'insensitive',
-            },
-          }
-        : undefined,
+  async findAll(query: any) {
+    const { skip, take, city, sortBy, sortOrder } = query;
 
-      include: {
-        screens: true,
-      },
+    const where: any = {};
 
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    if (city) {
+      where.city = {
+        contains: city,
+        mode: 'insensitive',
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.venue.findMany({
+        where,
+
+        skip,
+
+        take,
+
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+
+        include: {
+          screens: true,
+        },
+      }),
+
+      this.prisma.venue.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data,
+      total,
+    };
   }
 }

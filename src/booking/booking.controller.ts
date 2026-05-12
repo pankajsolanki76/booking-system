@@ -14,6 +14,9 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Query } from '@nestjs/common';
+
+import { QueryBookingDto } from './dto/query-booking.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth('JWT-auth')
@@ -46,16 +49,19 @@ export class BookingController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Get current user booking history',
+    summary: 'Get paginated booking history',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Booking history fetched successfully',
-  })
-  async getMyBookings(@CurrentUser() user: any) {
-    return this.bookingService.getMyBookings(user.id);
-  }
+  async getMyBookings(
+    @CurrentUser() user: any,
 
+    @Query() query: QueryBookingDto,
+  ) {
+    return this.bookingService.getMyBookings(
+      user.id,
+
+      query,
+    );
+  }
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({

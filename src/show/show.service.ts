@@ -8,6 +8,11 @@ import { EventRepository } from '../event/event.repository';
 
 import { ScreenRepository } from '../screen/screen.repository';
 import { SeatRepository } from '../seat/seat.repository';
+import { QueryShowDto } from './dto/query-show.dto';
+
+import { buildPagination } from '../common/utils/pagination.util';
+
+import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
 export class ShowService {
@@ -59,7 +64,39 @@ export class ShowService {
     return show;
   }
 
-  async findAll() {
-    return this.showRepository.findAll();
+  async findAll(queryDto: QueryShowDto) {
+    const {
+      page = 1,
+
+      limit = 10,
+
+      sortBy = 'startTime',
+
+      sortOrder = 'asc',
+    } = queryDto;
+
+    const { skip, take } = buildPagination(page, limit);
+
+    const result = await this.showRepository.findAll({
+      ...queryDto,
+
+      skip,
+
+      take,
+
+      sortBy,
+
+      sortOrder,
+    });
+
+    return createPaginatedResponse({
+      data: result.data,
+
+      total: result.total,
+
+      page,
+
+      limit,
+    });
   }
 }

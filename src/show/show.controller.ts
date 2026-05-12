@@ -18,6 +18,9 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
 import { Role } from '../common/enums/role.enum';
+import { Query } from '@nestjs/common';
+
+import { QueryShowDto } from './dto/query-show.dto';
 
 @ApiTags('Shows')
 @ApiBearerAuth('JWT-auth')
@@ -52,13 +55,13 @@ export class ShowController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all shows',
+    summary: 'Get paginated shows',
   })
   @ApiResponse({
     status: 200,
     description: 'Shows fetched successfully',
   })
-  async findAll() {
-    return this.showService.findAll();
+  async findAll(@Query() query: QueryShowDto) {
+    return this.showService.findAll(query);
   }
 }

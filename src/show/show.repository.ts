@@ -12,27 +12,46 @@ export class ShowRepository {
     });
   }
 
-  async findAll(filters?: any) {
-    return this.prisma.show.findMany({
-      where: filters,
+  async findAll(query: any) {
+    const { skip, take, eventId, sortBy, sortOrder } = query;
 
-      include: {
-        event: {
-          include: {
-            category: true,
-          },
+    const where: any = {};
+
+    if (eventId) {
+      where.eventId = eventId;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.show.findMany({
+        where,
+
+        skip,
+
+        take,
+
+        orderBy: {
+          [sortBy]: sortOrder,
         },
 
-        screen: {
-          include: {
-            venue: true,
+        include: {
+          event: true,
+
+          screen: {
+            include: {
+              venue: true,
+            },
           },
         },
-      },
+      }),
 
-      orderBy: {
-        startTime: 'asc',
-      },
-    });
+      this.prisma.show.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data,
+      total,
+    };
   }
 }

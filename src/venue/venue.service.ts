@@ -5,6 +5,11 @@ import { CreateVenueDto } from './dto/create-venue.dto';
 import { VenueRepository } from './venue.repository';
 
 import { slugify } from '../common/utils/slugify.util';
+import { QueryVenueDto } from './dto/query-venue.dto';
+
+import { buildPagination } from '../common/utils/pagination.util';
+
+import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
 export class VenueService {
@@ -26,7 +31,41 @@ export class VenueService {
     });
   }
 
-  async findAll(city?: string) {
-    return this.venueRepository.findAll(city);
+  async findAll(queryDto: QueryVenueDto) {
+    const {
+      page = 1,
+
+      limit = 10,
+
+      city,
+
+      sortBy = 'createdAt',
+
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const { skip, take } = buildPagination(page, limit);
+
+    const result = await this.venueRepository.findAll({
+      city,
+
+      skip,
+
+      take,
+
+      sortBy,
+
+      sortOrder,
+    });
+
+    return createPaginatedResponse({
+      data: result.data,
+
+      total: result.total,
+
+      page,
+
+      limit,
+    });
   }
 }

@@ -18,6 +18,9 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
 import { Role } from '../common/enums/role.enum';
+import { Query } from '@nestjs/common';
+
+import { QueryEventDto } from './dto/query-event.dto';
 
 @ApiTags('Events')
 @ApiBearerAuth('JWT-auth')
@@ -58,8 +61,16 @@ export class EventController {
     status: 200,
     description: 'Events fetched successfully',
   })
-  async findAll() {
-    return this.eventService.findAll();
+  @Get()
+  @ApiOperation({
+    summary: 'Get paginated events',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Events fetched successfully',
+  })
+  async findAll(@Query() query: QueryEventDto) {
+    return this.eventService.findAll(query);
   }
 
   @Get(':id')

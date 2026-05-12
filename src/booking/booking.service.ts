@@ -11,6 +11,11 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingRepository } from './booking.repository';
 
 import { SeatRepository } from '../seat/seat.repository';
+import { QueryBookingDto } from './dto/query-booking.dto';
+
+import { buildPagination } from '../common/utils/pagination.util';
+
+import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
 export class BookingService {
@@ -91,8 +96,46 @@ export class BookingService {
       };
     });
   }
-  async getMyBookings(userId: string) {
-    return this.bookingRepository.findUserBookings(userId);
+  async getMyBookings(
+    userId: string,
+
+    queryDto: QueryBookingDto,
+  ) {
+    const {
+      page = 1,
+
+      limit = 10,
+
+      sortBy = 'createdAt',
+
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const { skip, take } = buildPagination(page, limit);
+
+    const result = await this.bookingRepository.findUserBookings(
+      userId,
+
+      {
+        skip,
+
+        take,
+
+        sortBy,
+
+        sortOrder,
+      },
+    );
+
+    return createPaginatedResponse({
+      data: result.data,
+
+      total: result.total,
+
+      page,
+
+      limit,
+    });
   }
 
   async getBookingById(
