@@ -6,10 +6,15 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
+
   app.use(compression());
 
   app.enableCors({
@@ -25,7 +30,14 @@ async function bootstrap() {
     }),
   );
 
+  // REGISTER INTERCEPTOR
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  // REGISTER EXCEPTION FILTER
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   const prismaService = app.get(PrismaService);
+
   await prismaService.enableShutdownHooks(app);
 
   const port = process.env.PORT || 3000;
