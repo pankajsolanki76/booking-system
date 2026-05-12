@@ -1,24 +1,17 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Screen } from '@prisma/client';
 
 @Injectable()
-export class ScreenRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async create(data: any) {
-    return this.prisma.screen.create({
-      data,
-    });
+export class ScreenRepository extends PrismaBaseRepository<Screen> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.screen);
   }
 
-  async findById(id: string) {
-    return this.prisma.screen.findUnique({
-      where: { id },
-
-      include: {
-        venue: true,
-      },
+  override async findById(id: string) {
+    return super.findById(id, {
+      venue: true,
     });
   }
 
@@ -33,6 +26,7 @@ export class ScreenRepository {
       },
     });
   }
+
   async getSeats(screenId: string) {
     return this.prisma.screenSeat.findMany({
       where: { screenId },

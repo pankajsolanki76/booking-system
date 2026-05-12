@@ -1,36 +1,23 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
 import { ShowService } from './show.service';
-
 import { CreateShowDto } from './dto/create-show.dto';
-
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-import { RolesGuard } from '../auth/guards/roles.guard';
-
-import { Roles } from '../common/decorators/roles.decorator';
-
 import { Role } from '../common/enums/role.enum';
-import { Query } from '@nestjs/common';
-
 import { QueryShowDto } from './dto/query-show.dto';
+import { Auth } from '../auth/decorators/auth.decorator';
 
 @ApiTags('Shows')
-@ApiBearerAuth('JWT-auth')
 @Controller('shows')
 export class ShowController {
   constructor(private readonly showService: ShowService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Auth(Role.ADMIN)
   @ApiOperation({
     summary: 'Create show',
   })
@@ -41,10 +28,6 @@ export class ShowController {
   @ApiResponse({
     status: 400,
     description: 'Invalid event or screen',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden',
   })
   async create(
     @Body()

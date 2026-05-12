@@ -1,17 +1,12 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Category } from '@prisma/client';
 
 @Injectable()
-export class CategoryRepository {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
-
-  async create(data: any) {
-    return this.prisma.category.create({
-      data,
-    });
+export class CategoryRepository extends PrismaBaseRepository<Category> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.category);
   }
 
   async findByName(name: string) {
@@ -44,25 +39,6 @@ export class CategoryRepository {
       orderBy: {
         createdAt: 'desc',
       },
-    });
-  }
-
-  async update(id: string, data: any) {
-    return this.prisma.category.update({
-      where: { id },
-      data,
-    });
-  }
-
-  async delete(id: string) {
-    return this.prisma.category.delete({
-      where: { id },
-    });
-  }
-
-  async findById(id: string) {
-    return this.prisma.category.findUnique({
-      where: { id },
     });
   }
 }

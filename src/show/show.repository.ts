@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Show } from '@prisma/client';
 
 @Injectable()
-export class ShowRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async create(data: any) {
-    return this.prisma.show.create({
-      data,
-    });
+export class ShowRepository extends PrismaBaseRepository<Show> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.show);
   }
 
   async findAll(query: any) {

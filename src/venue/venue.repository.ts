@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Venue } from '@prisma/client';
 
 @Injectable()
-export class VenueRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async create(data: any) {
-    return this.prisma.venue.create({
-      data,
-    });
+export class VenueRepository extends PrismaBaseRepository<Venue> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.venue);
   }
 
   async findByName(name: string) {
@@ -29,13 +26,9 @@ export class VenueRepository {
     });
   }
 
-  async findById(id: string) {
-    return this.prisma.venue.findUnique({
-      where: { id },
-
-      include: {
-        screens: true,
-      },
+  override async findById(id: string) {
+    return super.findById(id, {
+      screens: true,
     });
   }
 

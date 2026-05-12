@@ -7,51 +7,33 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-import { RolesGuard } from '../auth/guards/roles.guard';
-
-import { Roles } from '../common/decorators/roles.decorator';
-
 import { Role } from '../common/enums/role.enum';
-
 import { CategoryService } from './category.service';
-
 import { CreateCategoryDto } from './dto/create-category.dto';
-
 import { QueryCategoryDto } from './dto/query-category.dto';
-
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Auth } from '../auth/decorators/auth.decorator';
 
 @ApiTags('Categories')
-@ApiBearerAuth('JWT-auth')
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Auth(Role.ADMIN)
   @ApiOperation({
     summary: 'Create category',
   })
   @ApiResponse({
     status: 201,
     description: 'Category created successfully',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden',
   })
   async create(
     @Body()
@@ -73,8 +55,7 @@ export class CategoryController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Auth(Role.ADMIN)
   @ApiOperation({
     summary: 'Update category',
   })
@@ -96,8 +77,7 @@ export class CategoryController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Auth(Role.ADMIN)
   @ApiOperation({
     summary: 'Delete category',
   })

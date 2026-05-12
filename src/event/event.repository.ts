@@ -1,25 +1,18 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Event } from '@prisma/client';
 
 @Injectable()
-export class EventRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async create(data: any) {
-    return this.prisma.event.create({
-      data,
-    });
+export class EventRepository extends PrismaBaseRepository<Event> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.event);
   }
 
-  async findById(id: string) {
-    return this.prisma.event.findUnique({
-      where: { id },
-
-      include: {
-        category: true,
-        shows: true,
-      },
+  override async findById(id: string) {
+    return super.findById(id, {
+      category: true,
+      shows: true,
     });
   }
 
@@ -28,6 +21,7 @@ export class EventRepository {
       where: { slug },
     });
   }
+
   async findAll(query: any) {
     const { skip, take, search, categoryId, sortBy, sortOrder } = query;
 
@@ -70,18 +64,5 @@ export class EventRepository {
       data,
       total,
     };
-  }
-  async update(id: string, data: any) {
-    return this.prisma.event.update({
-      where: { id },
-
-      data,
-    });
-  }
-
-  async delete(id: string) {
-    return this.prisma.event.delete({
-      where: { id },
-    });
   }
 }
