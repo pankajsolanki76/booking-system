@@ -6,10 +6,13 @@ import { ShowService } from './show.service';
 import { ShowRepository } from './show.repository';
 
 import { EventModule } from '../event/event.module';
-import { ScreenModule } from 'src/screen/screen.module';
+
+import { ScreenModule } from '../screen/screen.module';
+
+import { SeatModule } from '../seat/seat.module';
 
 @Module({
-  imports: [EventModule,ScreenModule],
+  imports: [EventModule, ScreenModule, SeatModule],
 
   controllers: [ShowController],
 

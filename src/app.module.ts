@@ -11,6 +11,7 @@ import { ShowModule } from './show/show.module';
 import { VenueModule } from './venue/venue.module';
 import { ScreenModule } from './screen/screen.module';
 import { SeatModule } from './seat/seat.module';
+import { BookingModule } from './booking/booking.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SeatModule } from './seat/seat.module';
     VenueModule,
     ScreenModule,
     SeatModule,
+    BookingModule,
   ],
 })
 export class AppModule {}

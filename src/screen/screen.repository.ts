@@ -33,4 +33,9 @@ export class ScreenRepository {
       },
     });
   }
+  async getSeats(screenId: string) {
+    return this.prisma.screenSeat.findMany({
+      where: { screenId },
+    });
+  }
 }

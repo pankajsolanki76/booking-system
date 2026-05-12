@@ -15,6 +15,23 @@ enum Role {
   USER
   ADMIN
 }
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+}
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
 
 model User {
   id          String   @id @default(cuid())
@@ -88,6 +105,7 @@ model Show {
 
   startTime      DateTime
   endTime        DateTime
+  showSeats ShowSeat[]
 
   availableSeats Int
 
@@ -129,9 +147,56 @@ model Screen {
   totalSeats    Int
 
   shows         Show[]
+  seats ScreenSeat[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([venueId])
+}
+model ScreenSeat {
+  id            String   @id @default(cuid())
+
+  screenId      String
+  screen        Screen   @relation(fields: [screenId], references: [id])
+
+  seatNumber    String
+
+  rowLabel      String
+
+  price         Decimal  @db.Decimal(10, 2)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  showSeats     ShowSeat[]
+
+  @@unique([screenId, seatNumber])
+
+  @@index([screenId])
+}
+model ShowSeat {
+  id              String      @id @default(cuid())
+
+  showId          String
+  show            Show        @relation(fields: [showId], references: [id])
+
+  screenSeatId    String
+  screenSeat      ScreenSeat  @relation(fields: [screenSeatId], references: [id])
+
+  status          SeatStatus  @default(AVAILABLE)
+
+  lockedAt        DateTime?
+
+  lockedUntil     DateTime?
+
+  bookedAt        DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([showId, screenSeatId])
+
+  @@index([showId])
+  @@index([status])
 }

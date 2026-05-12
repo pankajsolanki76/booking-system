@@ -7,6 +7,7 @@ import { ShowRepository } from './show.repository';
 import { EventRepository } from '../event/event.repository';
 
 import { ScreenRepository } from '../screen/screen.repository';
+import { SeatRepository } from '../seat/seat.repository';
 
 @Injectable()
 export class ShowService {
@@ -16,6 +17,8 @@ export class ShowService {
     private readonly eventRepository: EventRepository,
 
     private readonly screenRepository: ScreenRepository,
+
+    private readonly seatRepository: SeatRepository,
   ) {}
 
   async create(createShowDto: CreateShowDto) {
@@ -31,7 +34,7 @@ export class ShowService {
       throw new BadRequestException('Invalid screen');
     }
 
-    return this.showRepository.create({
+    const show = await this.showRepository.create({
       eventId: createShowDto.eventId,
 
       screenId: createShowDto.screenId,
@@ -42,6 +45,18 @@ export class ShowService {
 
       availableSeats: screen.totalSeats,
     });
+
+    const screenSeats = await this.screenRepository.getSeats(screen.id);
+
+    await this.seatRepository.createShowSeats(
+      screenSeats.map((seat) => ({
+        showId: show.id,
+
+        screenSeatId: seat.id,
+      })),
+    );
+
+    return show;
   }
 
   async findAll() {
