@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -91,11 +95,23 @@ export class BookingService {
     return this.bookingRepository.findUserBookings(userId);
   }
 
-  async getBookingById(id: string) {
-    const booking = await this.bookingRepository.findBookingById(id);
+  async getBookingById(
+    bookingId: string,
+
+    currentUser: any,
+  ) {
+    const booking = await this.bookingRepository.findBookingById(bookingId);
 
     if (!booking) {
       throw new BadRequestException('Booking not found');
+    }
+
+    const isOwner = booking.userId === currentUser.id;
+
+    const isAdmin = currentUser.role === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Access denied');
     }
 
     return booking;

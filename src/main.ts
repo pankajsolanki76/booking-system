@@ -9,9 +9,11 @@ import { PrismaService } from './prisma/prisma.service';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { setupSwagger } from './common/config/swagger.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  setupSwagger(app);
 
   app.use(helmet());
 

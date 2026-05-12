@@ -21,6 +21,8 @@ import { ScheduleModule } from '@nestjs/schedule';
       isGlobal: true,
     }),
 
+    ScheduleModule.forRoot(),
+
     PrismaModule,
     HealthModule,
     UserModule,
@@ -33,7 +35,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     SeatModule,
     BookingModule,
     PaymentModule,
-    ScheduleModule,
   ],
 })
 export class AppModule {}

@@ -1,22 +1,31 @@
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  Matches,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
+
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
+  @ApiProperty({
+    example: 'Pankaj Barot',
+  })
   @IsString()
-  @IsNotEmpty()
   name!: string;
 
+  @ApiProperty({
+    example: 'pankaj@test.com',
+  })
   @IsEmail()
   email!: string;
 
-  @Matches(/^[0-9]{10}$/)
+  @ApiProperty({
+    example: '9876543210',
+  })
+  @IsString()
   phoneNumber!: string;
 
-  @MinLength(6)
+  @ApiProperty({
+    example: 'Pass@123',
+  })
+  @IsString()
+  @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/)
   password!: string;
 }
