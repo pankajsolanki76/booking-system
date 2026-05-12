@@ -45,10 +45,58 @@ model Category {
   slug        String   @unique
 
   description String?
+  events Event[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([name])
   @@index([slug])
+}
+model Event {
+  id            String   @id @default(cuid())
+
+  title         String
+  slug          String   @unique
+
+  description   String?
+
+  language      String?
+  durationMins  Int?
+
+  posterUrl     String?
+
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+
+  shows         Show[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([title])
+  @@index([categoryId])
+}
+model Show {
+  id            String   @id @default(cuid())
+
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id])
+
+  venueName     String
+
+  city          String
+
+  startTime     DateTime
+  endTime       DateTime
+
+  totalSeats    Int
+  availableSeats Int
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([city])
+  @@index([startTime])
 }
