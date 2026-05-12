@@ -32,4 +32,40 @@ export class SeatRepository {
       },
     });
   }
+  async findAvailableShowSeats(showId: string, seatIds: string[]) {
+    return this.prisma.showSeat.findMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
+
+        showId,
+
+        status: 'AVAILABLE',
+      },
+
+      include: {
+        screenSeat: true,
+      },
+    });
+  }
+  async lockSeats(tx: any, seatIds: string[], expiresAt: Date) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
+
+        status: 'AVAILABLE',
+      },
+
+      data: {
+        status: 'LOCKED',
+
+        lockedAt: new Date(),
+
+        lockedUntil: expiresAt,
+      },
+    });
+  }
 }
