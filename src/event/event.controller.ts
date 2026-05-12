@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, Patch, Delete } from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -10,6 +10,7 @@ import {
 import { EventService } from './event.service';
 
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -87,5 +88,44 @@ export class EventController {
   })
   async findOne(@Param('id') id: string) {
     return this.eventService.findOne(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Update event details',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Event updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Event not found',
+  })
+  async update(
+    @Param('id') id: string,
+    @Body() updateEventDto: UpdateEventDto,
+  ) {
+    return this.eventService.update(id, updateEventDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Delete event',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Event deleted successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Event not found',
+  })
+  async remove(@Param('id') id: string) {
+    return this.eventService.remove(id);
   }
 }

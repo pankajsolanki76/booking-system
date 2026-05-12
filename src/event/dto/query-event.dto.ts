@@ -1,21 +1,32 @@
-import { IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
-import { ApiPropertyOptional } from '@nestjs/swagger';
+export class QueryEventDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
 
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
 
-export class QueryEventDto extends PaginationQueryDto {
-  @ApiPropertyOptional({
-    example: 'movie',
-  })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({
-    example: 'CATEGORY_ID',
-  })
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'asc' | 'desc';
 }

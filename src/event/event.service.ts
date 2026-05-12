@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { CategoryRepository } from '../category/category.repository';
 
@@ -11,6 +15,8 @@ import { buildPagination } from '../common/utils/pagination.util';
 
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 import { QueryEventDto } from './dto/query-event.dto';
+
+import { UpdateEventDto } from './dto/update-event.dto';
 
 @Injectable()
 export class EventService {
@@ -74,5 +80,40 @@ export class EventService {
 
   async findOne(id: string) {
     return this.eventRepository.findById(id);
+  }
+  async update(id: string, updateEventDto: UpdateEventDto) {
+    const existingEvent = await this.eventRepository.findById(id);
+
+    if (!existingEvent) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (updateEventDto.categoryId) {
+      const category = await this.categoryRepository.findById(
+        updateEventDto.categoryId,
+      );
+
+      if (!category) {
+        throw new BadRequestException('Invalid category');
+      }
+    }
+
+    return this.eventRepository.update(id, {
+      ...updateEventDto,
+
+      ...(updateEventDto.title && {
+        slug: slugify(updateEventDto.title),
+      }),
+    });
+  }
+
+  async remove(id: string) {
+    const existingEvent = await this.eventRepository.findById(id);
+
+    if (!existingEvent) {
+      throw new NotFoundException('Event not found');
+    }
+
+    return this.eventRepository.delete(id);
   }
 }

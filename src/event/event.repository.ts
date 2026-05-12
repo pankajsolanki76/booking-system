@@ -65,4 +65,17 @@ export class EventRepository {
       total,
     };
   }
+  async update(id: string, data: any) {
+    return this.prisma.event.update({
+      where: { id },
+
+      data,
+    });
+  }
+
+  async delete(id: string) {
+    return this.prisma.event.delete({
+      where: { id },
+    });
+  }
 }
