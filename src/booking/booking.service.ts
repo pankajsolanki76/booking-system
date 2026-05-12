@@ -87,4 +87,17 @@ export class BookingService {
       };
     });
   }
+  async getMyBookings(userId: string) {
+    return this.bookingRepository.findUserBookings(userId);
+  }
+
+  async getBookingById(id: string) {
+    const booking = await this.bookingRepository.findBookingById(id);
+
+    if (!booking) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    return booking;
+  }
 }

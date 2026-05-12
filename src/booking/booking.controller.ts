@@ -7,6 +7,7 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Get, Param } from '@nestjs/common';
 
 @Controller('bookings')
 export class BookingController {
@@ -21,5 +22,16 @@ export class BookingController {
     createBookingDto: CreateBookingDto,
   ) {
     return this.bookingService.createBooking(user.id, createBookingDto);
+  }
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyBookings(@CurrentUser() user: any) {
+    return this.bookingService.getMyBookings(user.id);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getBookingById(@Param('id') id: string) {
+    return this.bookingService.getBookingById(id);
   }
 }

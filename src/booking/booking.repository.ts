@@ -27,4 +27,65 @@ export class BookingRepository {
       },
     });
   }
+  async findExpiredBookings() {
+    return this.prisma.booking.findMany({
+      where: {
+        bookingStatus: 'PENDING',
+
+        expiresAt: {
+          lte: new Date(),
+        },
+      },
+
+      include: {
+        bookingSeats: true,
+      },
+    });
+  }
+  async expireBooking(tx: any, bookingId: string) {
+    return tx.booking.update({
+      where: {
+        id: bookingId,
+      },
+
+      data: {
+        bookingStatus: 'EXPIRED',
+      },
+    });
+  }
+  async findUserBookings(userId: string) {
+    return this.prisma.booking.findMany({
+      where: {
+        userId,
+      },
+
+      include: {
+        bookingSeats: {
+          include: {
+            showSeat: {
+              include: {
+                screenSeat: true,
+              },
+            },
+          },
+        },
+
+        show: {
+          include: {
+            event: true,
+
+            screen: {
+              include: {
+                venue: true,
+              },
+            },
+          },
+        },
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
