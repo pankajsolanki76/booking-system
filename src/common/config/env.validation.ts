@@ -29,13 +29,15 @@ class EnvironmentVariables {
   JWT_ACCESS_SECRET: string;
 
   @IsString()
-  JWT_ACCESS_EXPIRES_IN: string;
+  @IsOptional()
+  JWT_ACCESS_EXPIRES_IN: string = '15m';
 
   @IsString()
   JWT_REFRESH_SECRET: string;
 
   @IsString()
-  JWT_REFRESH_EXPIRES_IN: string;
+  @IsOptional()
+  JWT_REFRESH_EXPIRES_IN: string = '7d';
 
   @IsString()
   @IsOptional()
@@ -55,7 +57,14 @@ export function validate(config: Record<string, any>) {
   });
 
   if (errors.length > 0) {
-    throw new Error(errors.toString());
+    const errorMessages = errors
+      .map((error) => {
+        const constraints = Object.values(error.constraints || {}).join(', ');
+        return `${error.property}: ${constraints}`;
+      })
+      .join('; ');
+    throw new Error(`Environment validation failed: ${errorMessages}`);
   }
   return validatedConfig;
 }
+
