@@ -15,12 +15,11 @@ export class ScreenRepository extends PrismaBaseRepository<Screen> {
     });
   }
 
-  async findAll() {
-    return this.prisma.screen.findMany({
+  async findAllScreens() {
+    return this.findMany({
       include: {
         venue: true,
       },
-
       orderBy: {
         createdAt: 'desc',
       },
@@ -33,3 +32,4 @@ export class ScreenRepository extends PrismaBaseRepository<Screen> {
     });
   }
 }
+

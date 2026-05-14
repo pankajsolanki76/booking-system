@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { User } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import * as bcrypt from 'bcrypt';
 
@@ -6,8 +8,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepository } from './user.repository';
 
 @Injectable()
-export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+export class UserService extends BaseService<User> {
+  constructor(private readonly userRepository: UserRepository) {
+    super(userRepository);
+  }
 
   async register(createUserDto: CreateUserDto) {
     const existingEmail = await this.userRepository.findByEmail(
@@ -28,7 +32,7 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-    const user = await this.userRepository.create({
+    const user = await super.create({
       ...createUserDto,
       password: hashedPassword,
     });
@@ -45,3 +49,4 @@ export class UserService {
     };
   }
 }
+

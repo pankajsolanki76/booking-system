@@ -9,7 +9,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Category } from '@prisma/client';
 
+import { BaseController } from '../common/controllers/base.controller';
 import { Role } from '../common/enums/role.enum';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -19,8 +21,15 @@ import { Auth } from '../auth/decorators/auth.decorator';
 
 @ApiTags('Categories')
 @Controller('categories')
-export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+export class CategoryController extends BaseController<
+  Category,
+  CreateCategoryDto,
+  UpdateCategoryDto,
+  QueryCategoryDto
+> {
+  constructor(private readonly categoryService: CategoryService) {
+    super(categoryService);
+  }
 
   @Post()
   @Auth(Role.ADMIN)
@@ -31,14 +40,15 @@ export class CategoryController {
     status: 201,
     description: 'Category created successfully',
   })
-  async create(
+  override async create(
     @Body()
     createCategoryDto: CreateCategoryDto,
   ) {
-    return this.categoryService.create(createCategoryDto);
+    return super.create(createCategoryDto);
   }
 
   @Get()
+  @Auth()
   @ApiOperation({
     summary: 'Get all categories',
   })
@@ -46,9 +56,27 @@ export class CategoryController {
     status: 200,
     description: 'Categories fetched successfully',
   })
-  async findAll(@Query() query: QueryCategoryDto) {
+  override async findAll(@Query() query: QueryCategoryDto) {
     return this.categoryService.findAll(query);
   }
+
+  @Get(':id')
+  @Auth()
+  @ApiOperation({
+    summary: 'Get category by ID',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Category fetched successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Category not found',
+  })
+  override async findOne(@Param('id') id: string) {
+    return super.findOne(id);
+  }
+
 
   @Patch(':id')
   @Auth(Role.ADMIN)
@@ -63,13 +91,13 @@ export class CategoryController {
     status: 404,
     description: 'Category not found',
   })
-  async update(
+  override async update(
     @Param('id') id: string,
 
     @Body()
     updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoryService.update(id, updateCategoryDto);
+    return super.update(id, updateCategoryDto);
   }
 
   @Delete(':id')
@@ -85,7 +113,8 @@ export class CategoryController {
     status: 404,
     description: 'Category not found',
   })
-  async remove(@Param('id') id: string) {
-    return this.categoryService.remove(id);
+  override async remove(@Param('id') id: string) {
+    return super.remove(id);
   }
 }
+

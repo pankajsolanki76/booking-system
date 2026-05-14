@@ -1,28 +1,44 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Booking } from '@prisma/client';
 
 import { BookingService } from './booking.service';
-
 import { CreateBookingDto } from './dto/create-booking.dto';
-
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Query } from '@nestjs/common';
-
 import { QueryBookingDto } from './dto/query-booking.dto';
+import { BaseController } from '../common/controllers/base.controller';
+import { Role } from '../common/enums/role.enum';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth('JWT-auth')
 @Controller('bookings')
-export class BookingController {
-  constructor(private readonly bookingService: BookingService) {}
+export class BookingController extends BaseController<
+  Booking,
+  CreateBookingDto,
+  UpdateBookingDto,
+  QueryBookingDto
+> {
+  constructor(private readonly bookingService: BookingService) {
+    super(bookingService);
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -37,33 +53,28 @@ export class BookingController {
     status: 400,
     description: 'Some seats are unavailable',
   })
-  async createBooking(
-    @CurrentUser() user: any,
-
+  override async create(
     @Body()
     createBookingDto: CreateBookingDto,
+    @CurrentUser() user: any,
   ) {
     return this.bookingService.createBooking(user.id, createBookingDto);
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
+  @Auth()
   @ApiOperation({
     summary: 'Get paginated booking history',
   })
   async getMyBookings(
     @CurrentUser() user: any,
-
     @Query() query: QueryBookingDto,
   ) {
-    return this.bookingService.getMyBookings(
-      user.id,
-
-      query,
-    );
+    return this.bookingService.getMyBookings(user.id, query);
   }
+
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @Auth()
   @ApiOperation({
     summary: 'Get booking details',
   })
@@ -75,11 +86,33 @@ export class BookingController {
     status: 403,
     description: 'Access denied',
   })
-  async getBookingById(
-    @Param('id') id: string,
-
-    @CurrentUser() user: any,
-  ) {
+  override async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.bookingService.getBookingById(id, user);
   }
+
+  @Get('admin/all')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all bookings (Admin only)' })
+  override async findAll(@Query() query: QueryBookingDto) {
+    return super.findAll(query);
+  }
+
+  @Patch(':id')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Update booking (Admin only)' })
+  override async update(
+    @Param('id') id: string,
+    @Body() updateBookingDto: UpdateBookingDto,
+  ) {
+    return super.update(id, updateBookingDto);
+  }
+
+  @Delete(':id')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel/Delete booking (Admin only)' })
+  override async remove(@Param('id') id: string) {
+    return super.remove(id);
+  }
 }
+
+

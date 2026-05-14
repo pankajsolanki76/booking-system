@@ -38,44 +38,16 @@ export class VenueRepository extends PrismaBaseRepository<Venue> {
     });
   }
 
-  async findAll(query: VenueFindAllQuery) {
-    const {
-      skip,
-      take,
-      city,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = query;
-
-    const where: Prisma.VenueWhereInput = {};
-
-    if (city) {
-      where.city = {
-        contains: city,
-        mode: 'insensitive',
-      };
-    }
-
+  async findAllVenues(params: {
+    where?: Prisma.VenueWhereInput;
+    skip?: number;
+    take?: number;
+    orderBy?: any;
+    include?: any;
+  }) {
     const [data, total] = await Promise.all([
-      this.prisma.venue.findMany({
-        where,
-
-        skip,
-
-        take,
-
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-
-        include: {
-          screens: true,
-        },
-      }),
-
-      this.prisma.venue.count({
-        where,
-      }),
+      this.findMany(params),
+      this.count(params.where),
     ]);
 
     return {
@@ -84,3 +56,4 @@ export class VenueRepository extends PrismaBaseRepository<Venue> {
     };
   }
 }
+

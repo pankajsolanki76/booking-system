@@ -1,8 +1,9 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
+import { Category } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { CategoryRepository } from './category.repository';
 
@@ -10,13 +11,15 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { QueryCategoryDto } from './dto/query-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
-import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
+import { generateUniqueSlug } from '../common/utils/slugify.util';
 
 @Injectable()
-export class CategoryService {
-  constructor(private readonly categoryRepository: CategoryRepository) {}
+export class CategoryService extends BaseService<Category> {
+  constructor(private readonly categoryRepository: CategoryRepository) {
+    super(categoryRepository);
+  }
 
-  async create(createCategoryDto: CreateCategoryDto) {
+  override async create(createCategoryDto: CreateCategoryDto) {
     const existing = await this.categoryRepository.findByName(
       createCategoryDto.name,
     );
@@ -30,23 +33,19 @@ export class CategoryService {
       async (s) => !!(await this.categoryRepository.findBySlug(s)),
     );
 
-    return this.categoryRepository.create({
+    return super.create({
       ...createCategoryDto,
       slug,
     });
   }
 
-  async findAll(query: QueryCategoryDto) {
-    return this.categoryRepository.findAll(query.search);
+  override async findAll(query: any) {
+    const search = query?.search || query?.where?.search;
+    return this.categoryRepository.findAll(search);
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    const category = await this.categoryRepository.findById(id);
-
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
-
+  override async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    // BaseService.update calls findOne which throws NotFoundException if not found
     let slugUpdate = {};
     if (updateCategoryDto.name) {
       const newSlug = await generateUniqueSlug(
@@ -59,23 +58,18 @@ export class CategoryService {
       slugUpdate = { slug: newSlug };
     }
 
-    return this.categoryRepository.update(id, {
+    return super.update(id, {
       ...updateCategoryDto,
       ...slugUpdate,
     });
   }
 
-  async remove(id: string) {
-    const category = await this.categoryRepository.findById(id);
-
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
-
-    await this.categoryRepository.delete(id);
-
+  override async remove(id: string): Promise<any> {
+    await super.remove(id);
     return {
       message: 'Category deleted successfully',
     };
   }
 }
+
+

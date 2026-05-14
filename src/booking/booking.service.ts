@@ -3,6 +3,8 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Booking } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -18,14 +20,16 @@ import { buildPagination } from '../common/utils/pagination.util';
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
-export class BookingService {
+export class BookingService extends BaseService<Booking> {
   constructor(
     private readonly prisma: PrismaService,
 
     private readonly bookingRepository: BookingRepository,
 
     private readonly seatRepository: SeatRepository,
-  ) {}
+  ) {
+    super(bookingRepository);
+  }
 
   async createBooking(
     userId: string,
@@ -96,6 +100,7 @@ export class BookingService {
       };
     });
   }
+
   async getMyBookings(
     userId: string,
 
@@ -113,19 +118,45 @@ export class BookingService {
 
     const { skip, take } = buildPagination(page, limit);
 
-    const result = await this.bookingRepository.findUserBookings(
+    const result = await this.bookingRepository.findUserBookings({
       userId,
 
-      {
-        skip,
-
-        take,
-
-        sortBy,
-
-        sortOrder,
+      where: {
+        userId,
       },
-    );
+
+      skip,
+
+      take,
+
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+
+      include: {
+        bookingSeats: {
+          include: {
+            showSeat: {
+              include: {
+                screenSeat: true,
+              },
+            },
+          },
+        },
+
+        show: {
+          include: {
+            event: true,
+
+            screen: {
+              include: {
+                venue: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
     return createPaginatedResponse({
       data: result.data,
@@ -143,11 +174,7 @@ export class BookingService {
 
     currentUser: any,
   ) {
-    const booking = await this.bookingRepository.findBookingById(bookingId);
-
-    if (!booking) {
-      throw new BadRequestException('Booking not found');
-    }
+    const booking = await this.findOne(bookingId); // BaseService.findOne throws NotFoundException
 
     const isOwner = booking.userId === currentUser.id;
 
@@ -160,3 +187,4 @@ export class BookingService {
     return booking;
   }
 }
+

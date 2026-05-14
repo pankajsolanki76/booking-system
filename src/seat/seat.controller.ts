@@ -1,15 +1,32 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ScreenSeat } from '@prisma/client';
 
 import { SeatService } from './seat.service';
 import { CreateScreenSeatDto } from './dto/create-screen-seat.dto';
 import { Role } from '../common/enums/role.enum';
 import { Auth } from '../auth/decorators/auth.decorator';
+import { BaseController } from '../common/controllers/base.controller';
+import { UpdateScreenSeatDto } from './dto/update-screen-seat.dto';
 
 @ApiTags('Seats')
 @Controller('seats')
-export class SeatController {
-  constructor(private readonly seatService: SeatService) {}
+export class SeatController extends BaseController<
+  ScreenSeat,
+  CreateScreenSeatDto,
+  UpdateScreenSeatDto
+> {
+  constructor(private readonly seatService: SeatService) {
+    super(seatService);
+  }
 
   @Post()
   @Auth(Role.ADMIN)
@@ -32,6 +49,7 @@ export class SeatController {
   }
 
   @Get('show/:showId')
+  @Auth()
   @ApiOperation({
     summary: 'Get seats for a show',
   })
@@ -42,4 +60,34 @@ export class SeatController {
   async getShowSeats(@Param('showId') showId: string) {
     return this.seatService.getShowSeats(showId);
   }
+
+  @Get(':id')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Get screen seat by ID' })
+  override async findOne(@Param('id') id: string) {
+    return super.findOne(id);
+  }
+
+  @Patch(':id')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Update screen seat' })
+  @ApiResponse({
+    status: 200,
+    description: 'Seat updated successfully',
+  })
+  override async update(
+    @Param('id') id: string,
+    @Body() updateSeatDto: UpdateScreenSeatDto,
+  ) {
+    return super.update(id, updateSeatDto);
+  }
+
+  @Delete(':id')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Delete screen seat' })
+  override async remove(@Param('id') id: string) {
+    return super.remove(id);
+  }
 }
+
+

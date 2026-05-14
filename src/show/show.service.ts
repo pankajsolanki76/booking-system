@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Show } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { CreateShowDto } from './dto/create-show.dto';
 
@@ -15,7 +17,7 @@ import { buildPagination } from '../common/utils/pagination.util';
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
-export class ShowService {
+export class ShowService extends BaseService<Show> {
   constructor(
     private readonly showRepository: ShowRepository,
 
@@ -24,9 +26,11 @@ export class ShowService {
     private readonly screenRepository: ScreenRepository,
 
     private readonly seatRepository: SeatRepository,
-  ) {}
+  ) {
+    super(showRepository);
+  }
 
-  async create(createShowDto: CreateShowDto) {
+  override async create(createShowDto: CreateShowDto) {
     const event = await this.eventRepository.findById(createShowDto.eventId);
 
     if (!event) {
@@ -39,7 +43,7 @@ export class ShowService {
       throw new BadRequestException('Invalid screen');
     }
 
-    const show = await this.showRepository.create({
+    const show = await super.create({
       eventId: createShowDto.eventId,
 
       screenId: createShowDto.screenId,
@@ -64,7 +68,7 @@ export class ShowService {
     return show;
   }
 
-  async findAll(queryDto: QueryShowDto) {
+  override async findAll(queryDto: QueryShowDto) {
     const {
       page = 1,
 
@@ -73,20 +77,37 @@ export class ShowService {
       sortBy = 'startTime',
 
       sortOrder = 'asc',
+
+      eventId,
     } = queryDto;
 
     const { skip, take } = buildPagination(page, limit);
 
-    const result = await this.showRepository.findAll({
-      ...queryDto,
+    const where: any = {};
+    if (eventId) {
+      where.eventId = eventId;
+    }
+
+    const result = await this.showRepository.findAllShows({
+      where,
 
       skip,
 
       take,
 
-      sortBy,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
 
-      sortOrder,
+      include: {
+        event: true,
+
+        screen: {
+          include: {
+            venue: true,
+          },
+        },
+      },
     });
 
     return createPaginatedResponse({
@@ -100,3 +121,4 @@ export class ShowService {
     });
   }
 }
+

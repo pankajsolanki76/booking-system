@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Payment } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -9,7 +11,7 @@ import { PaymentRepository } from './payment.repository';
 import { SeatRepository } from '../seat/seat.repository';
 
 @Injectable()
-export class PaymentService {
+export class PaymentService extends BaseService<Payment> {
   constructor(
     private readonly prisma: PrismaService,
 
@@ -18,14 +20,16 @@ export class PaymentService {
     private readonly paymentRepository: PaymentRepository,
 
     private readonly seatRepository: SeatRepository,
-  ) {}
+  ) {
+    super(paymentRepository);
+  }
 
   async processPayment(
     bookingId: string,
 
     simulateSuccess: boolean,
   ) {
-    const booking = await this.bookingRepository.findBookingById(bookingId);
+    const booking = await this.bookingRepository.findById(bookingId);
 
     if (!booking) {
       throw new BadRequestException('Booking not found');
@@ -40,7 +44,7 @@ export class PaymentService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const seatIds = booking.bookingSeats.map((seat) => seat.showSeatId);
+      const seatIds = booking.bookingSeats.map((seat: any) => seat.showSeatId);
 
       if (simulateSuccess) {
         await this.seatRepository.bookSeats(tx, seatIds);
@@ -104,3 +108,4 @@ export class PaymentService {
     });
   }
 }
+

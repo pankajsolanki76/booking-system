@@ -22,7 +22,7 @@ export class CategoryRepository extends PrismaBaseRepository<Category> {
   }
 
   async findAll(search?: string) {
-    return this.prisma.category.findMany({
+    return this.findMany({
       where: search
         ? {
             OR: [
@@ -35,10 +35,10 @@ export class CategoryRepository extends PrismaBaseRepository<Category> {
             ],
           }
         : undefined,
-
       orderBy: {
         createdAt: 'desc',
       },
     });
   }
 }
+

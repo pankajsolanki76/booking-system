@@ -29,49 +29,16 @@ export class EventRepository extends PrismaBaseRepository<Event> {
     });
   }
 
-  async findAll(query: EventFindAllQuery) {
-    const {
-      skip,
-      take,
-      search,
-      categoryId,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = query;
-
-    const where: Prisma.EventWhereInput = {};
-
-    if (search) {
-      where.title = {
-        contains: search,
-        mode: 'insensitive',
-      };
-    }
-
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-
+  async findAllEvents(params: {
+    where?: Prisma.EventWhereInput;
+    skip?: number;
+    take?: number;
+    orderBy?: any;
+    include?: any;
+  }) {
     const [data, total] = await Promise.all([
-      this.prisma.event.findMany({
-        where,
-
-        skip,
-
-        take,
-
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-
-        include: {
-          category: true,
-        },
-      }),
-
-      this.prisma.event.count({
-        where,
-      }),
+      this.findMany(params),
+      this.count(params.where),
     ]);
 
     return {
@@ -80,3 +47,4 @@ export class EventRepository extends PrismaBaseRepository<Event> {
     };
   }
 }
+

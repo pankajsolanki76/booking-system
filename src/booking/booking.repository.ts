@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, Booking, BookingSeat } from '@prisma/client';
-import { BaseFindAllQuery } from '../common/interfaces/repository-query.interface';
+import { Prisma, Booking } from '@prisma/client';
+import { PrismaBaseRepository } from '../common/repositories/base.repository';
 
 @Injectable()
-export class BookingRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class BookingRepository extends PrismaBaseRepository<Booking> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.booking);
+  }
 
   async createBooking(
     tx: Prisma.TransactionClient,
@@ -25,7 +27,7 @@ export class BookingRepository {
     });
   }
 
-  async findBookingById(id: string) {
+  override async findById(id: string) {
     return this.prisma.booking.findUnique({
       where: { id },
 
@@ -34,6 +36,7 @@ export class BookingRepository {
       },
     });
   }
+
   async findExpiredBookings() {
     return this.prisma.booking.findMany({
       where: {
@@ -49,6 +52,7 @@ export class BookingRepository {
       },
     });
   }
+
   async expireBooking(tx: Prisma.TransactionClient, bookingId: string) {
     return tx.booking.update({
       where: {
@@ -61,57 +65,18 @@ export class BookingRepository {
     });
   }
 
-  async findUserBookings(
-    userId: string,
-
-    query: BaseFindAllQuery,
-  ) {
-    const { skip, take, sortBy = 'createdAt', sortOrder = 'desc' } = query;
-
-    const where = {
-      userId,
-    };
-
+  async findUserBookings(params: {
+    userId: string;
+    where?: Prisma.BookingWhereInput;
+    skip?: number;
+    take?: number;
+    orderBy?: any;
+    include?: any;
+  }) {
+    const { userId, ...rest } = params;
     const [data, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-
-        skip,
-
-        take,
-
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-
-        include: {
-          bookingSeats: {
-            include: {
-              showSeat: {
-                include: {
-                  screenSeat: true,
-                },
-              },
-            },
-          },
-
-          show: {
-            include: {
-              event: true,
-
-              screen: {
-                include: {
-                  venue: true,
-                },
-              },
-            },
-          },
-        },
-      }),
-
-      this.prisma.booking.count({
-        where,
-      }),
+      this.findMany(rest),
+      this.count(rest.where),
     ]);
 
     return {
@@ -119,4 +84,6 @@ export class BookingRepository {
       total,
     };
   }
+
 }
+

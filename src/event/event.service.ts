@@ -1,12 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Event, Prisma } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { CategoryRepository } from '../category/category.repository';
 
-import { slugify, generateUniqueSlug } from '../common/utils/slugify.util';
+import { generateUniqueSlug } from '../common/utils/slugify.util';
 
 import { CreateEventDto } from './dto/create-event.dto';
 
@@ -19,14 +17,16 @@ import { QueryEventDto } from './dto/query-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
 @Injectable()
-export class EventService {
+export class EventService extends BaseService<Event> {
   constructor(
     private readonly eventRepository: EventRepository,
 
     private readonly categoryRepository: CategoryRepository,
-  ) {}
+  ) {
+    super(eventRepository);
+  }
 
-  async create(createEventDto: CreateEventDto) {
+  override async create(createEventDto: CreateEventDto) {
     const category = await this.categoryRepository.findById(
       createEventDto.categoryId,
     );
@@ -40,14 +40,14 @@ export class EventService {
       async (s) => !!(await this.eventRepository.findBySlug(s)),
     );
 
-    return this.eventRepository.create({
+    return super.create({
       ...createEventDto,
 
       slug,
     });
   }
 
-  async findAll(queryDto: QueryEventDto) {
+  override async findAll(queryDto: QueryEventDto) {
     const {
       page = 1,
 
@@ -56,20 +56,36 @@ export class EventService {
       sortBy = 'createdAt',
 
       sortOrder = 'desc',
+
+      search,
+
+      categoryId,
     } = queryDto;
 
     const { skip, take } = buildPagination(page, limit);
 
-    const result = await this.eventRepository.findAll({
-      ...queryDto,
+    const where: Prisma.EventWhereInput = {};
+    if (search) {
+      where.title = { contains: search, mode: 'insensitive' };
+    }
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    const result = await this.eventRepository.findAllEvents({
+      where,
 
       skip,
 
       take,
 
-      sortBy,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
 
-      sortOrder,
+      include: {
+        category: true,
+      },
     });
 
     return createPaginatedResponse({
@@ -83,16 +99,7 @@ export class EventService {
     });
   }
 
-  async findOne(id: string) {
-    return this.eventRepository.findById(id);
-  }
-  async update(id: string, updateEventDto: UpdateEventDto) {
-    const existingEvent = await this.eventRepository.findById(id);
-
-    if (!existingEvent) {
-      throw new NotFoundException('Event not found');
-    }
-
+  override async update(id: string, updateEventDto: UpdateEventDto) {
     if (updateEventDto.categoryId) {
       const category = await this.categoryRepository.findById(
         updateEventDto.categoryId,
@@ -115,20 +122,11 @@ export class EventService {
       slugUpdate = { slug: newSlug };
     }
 
-    return this.eventRepository.update(id, {
+    return super.update(id, {
       ...updateEventDto,
 
       ...slugUpdate,
     });
   }
-
-  async remove(id: string) {
-    const existingEvent = await this.eventRepository.findById(id);
-
-    if (!existingEvent) {
-      throw new NotFoundException('Event not found');
-    }
-
-    return this.eventRepository.delete(id);
-  }
 }
+

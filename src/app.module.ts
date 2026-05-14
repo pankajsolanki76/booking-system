@@ -17,12 +17,25 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logger/winston.config';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { validate } from './common/config/env.validation';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+
+      validate,
     }),
+
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+
+        limit: 10,
+      },
+    ]),
 
     ScheduleModule.forRoot(),
     WinstonModule.forRoot(winstonConfig),
@@ -40,9 +53,18 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     BookingModule,
     PaymentModule,
   ],
+
+  providers: [
+    {
+      provide: APP_GUARD,
+
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }
+

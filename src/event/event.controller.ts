@@ -1,26 +1,35 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
-  Post,
   Patch,
-  Delete,
+  Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Event } from '@prisma/client';
 
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { Role } from '../common/enums/role.enum';
-import { Query } from '@nestjs/common';
 import { QueryEventDto } from './dto/query-event.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
+import { BaseController } from '../common/controllers/base.controller';
 
 @ApiTags('Events')
 @Controller('events')
-export class EventController {
-  constructor(private readonly eventService: EventService) {}
+export class EventController extends BaseController<
+  Event,
+  CreateEventDto,
+  UpdateEventDto,
+  QueryEventDto
+> {
+  constructor(private readonly eventService: EventService) {
+    super(eventService);
+  }
 
   @Post()
   @Auth(Role.ADMIN)
@@ -35,7 +44,7 @@ export class EventController {
     status: 400,
     description: 'Invalid category',
   })
-  async create(
+  override async create(
     @Body()
     createEventDto: CreateEventDto,
   ) {
@@ -43,6 +52,7 @@ export class EventController {
   }
 
   @Get()
+  @Auth()
   @ApiOperation({
     summary: 'Get paginated events',
   })
@@ -50,11 +60,12 @@ export class EventController {
     status: 200,
     description: 'Events fetched successfully',
   })
-  async findAll(@Query() query: QueryEventDto) {
+  override async findAll(@Query() query: QueryEventDto) {
     return this.eventService.findAll(query);
   }
 
   @Get(':id')
+  @Auth()
   @ApiOperation({
     summary: 'Get single event details',
   })
@@ -66,9 +77,10 @@ export class EventController {
     status: 404,
     description: 'Event not found',
   })
-  async findOne(@Param('id') id: string) {
-    return this.eventService.findOne(id);
+  override async findOne(@Param('id') id: string) {
+    return super.findOne(id);
   }
+
 
   @Patch(':id')
   @Auth(Role.ADMIN)
@@ -83,11 +95,11 @@ export class EventController {
     status: 404,
     description: 'Event not found',
   })
-  async update(
+  override async update(
     @Param('id') id: string,
     @Body() updateEventDto: UpdateEventDto,
   ) {
-    return this.eventService.update(id, updateEventDto);
+    return super.update(id, updateEventDto);
   }
 
   @Delete(':id')
@@ -103,7 +115,8 @@ export class EventController {
     status: 404,
     description: 'Event not found',
   })
-  async remove(@Param('id') id: string) {
-    return this.eventService.remove(id);
+  override async remove(@Param('id') id: string) {
+    return super.remove(id);
   }
 }
+

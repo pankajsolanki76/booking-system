@@ -14,47 +14,16 @@ export class ShowRepository extends PrismaBaseRepository<Show> {
     super(prisma.show);
   }
 
-  async findAll(query: ShowFindAllQuery) {
-    const {
-      skip,
-      take,
-      eventId,
-      sortBy = 'startTime',
-      sortOrder = 'asc',
-    } = query;
-
-    const where: Prisma.ShowWhereInput = {};
-
-    if (eventId) {
-      where.eventId = eventId;
-    }
-
+  async findAllShows(params: {
+    where?: Prisma.ShowWhereInput;
+    skip?: number;
+    take?: number;
+    orderBy?: any;
+    include?: any;
+  }) {
     const [data, total] = await Promise.all([
-      this.prisma.show.findMany({
-        where,
-
-        skip,
-
-        take,
-
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-
-        include: {
-          event: true,
-
-          screen: {
-            include: {
-              venue: true,
-            },
-          },
-        },
-      }),
-
-      this.prisma.show.count({
-        where,
-      }),
+      this.findMany(params),
+      this.count(params.where),
     ]);
 
     return {
@@ -63,3 +32,4 @@ export class ShowRepository extends PrismaBaseRepository<Show> {
     };
   }
 }
+

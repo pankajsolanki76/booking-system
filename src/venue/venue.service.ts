@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Venue } from '@prisma/client';
+import { BaseService } from '../common/services/base.service';
 
 import { CreateVenueDto } from './dto/create-venue.dto';
 
@@ -12,10 +14,12 @@ import { buildPagination } from '../common/utils/pagination.util';
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 
 @Injectable()
-export class VenueService {
-  constructor(private readonly venueRepository: VenueRepository) {}
+export class VenueService extends BaseService<Venue> {
+  constructor(private readonly venueRepository: VenueRepository) {
+    super(venueRepository);
+  }
 
-  async create(createVenueDto: CreateVenueDto) {
+  override async create(createVenueDto: CreateVenueDto) {
     const existingVenue = await this.venueRepository.findByName(
       createVenueDto.name,
     );
@@ -29,13 +33,13 @@ export class VenueService {
       async (s) => !!(await this.venueRepository.findBySlug(s)),
     );
 
-    return this.venueRepository.create({
+    return super.create({
       ...createVenueDto,
       slug,
     });
   }
 
-  async findAll(queryDto: QueryVenueDto) {
+  override async findAll(queryDto: QueryVenueDto) {
     const {
       page = 1,
 
@@ -50,16 +54,28 @@ export class VenueService {
 
     const { skip, take } = buildPagination(page, limit);
 
-    const result = await this.venueRepository.findAll({
-      city,
+    const where: any = {};
+    if (city) {
+      where.city = {
+        contains: city,
+        mode: 'insensitive',
+      };
+    }
+
+    const result = await this.venueRepository.findAllVenues({
+      where,
 
       skip,
 
       take,
 
-      sortBy,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
 
-      sortOrder,
+      include: {
+        screens: true,
+      },
     });
 
     return createPaginatedResponse({
@@ -73,3 +89,4 @@ export class VenueService {
     });
   }
 }
+
