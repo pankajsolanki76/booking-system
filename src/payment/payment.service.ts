@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { randomUUID } from 'crypto';
+
 import { Payment } from '@prisma/client';
 
 import { BaseService } from '../common/services/base.service';
@@ -31,121 +33,116 @@ export class PaymentService extends BaseService<Payment> {
 
     simulateSuccess: boolean,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      /**
-       * IMPORTANT:
-       * Fetch latest booking INSIDE transaction
-       */
-      const booking = await this.bookingRepository.findBookingById(
-        tx,
-        bookingId,
-      );
+    return this.prisma.$transaction(
+      async (tx) => {
+        const booking = await this.bookingRepository.findBookingById(
+          tx,
+          bookingId,
+        );
 
-      /**
-       * Booking not found
-       */
-      if (!booking) {
-        throw new BadRequestException('Booking not found');
-      }
-
-      /**
-       * Already processed
-       */
-      if (booking.bookingStatus !== 'PENDING') {
-        throw new BadRequestException('Booking already processed');
-      }
-
-      /**
-       * Expiry check INSIDE transaction
-       * Prevents race conditions
-       */
-      if (new Date() > booking.expiresAt) {
-        throw new BadRequestException('Booking lock expired');
-      }
-
-      const seatIds = booking.bookingSeats.map((seat) => seat.showSeatId);
-
-      /**
-       * Payment Success
-       */
-      if (simulateSuccess) {
+        if (!booking) {
+          throw new BadRequestException('Booking not found');
+        }
         /**
-         * Mark seats booked
+         * Prevent duplicate payment processing
          */
-        await this.seatRepository.bookSeats(tx, seatIds);
+        const existingPayment = await this.paymentRepository.existingPayment(
+          tx,
+          booking.id,
+        );
 
-        /**
-         * Update booking
-         */
+        if (existingPayment) {
+          return {
+            message: 'Payment already processed',
+
+            bookingId: booking.id,
+
+            paymentStatus: existingPayment.status,
+          };
+        }
+
+        if (booking.bookingStatus !== 'PENDING') {
+          throw new BadRequestException('Booking already processed');
+        }
+
+        if (new Date() > booking.expiresAt) {
+          throw new BadRequestException('Booking lock expired');
+        }
+
+        const seatIds = booking.bookingSeats.map((seat) => seat.showSeatId);
+
+        if (simulateSuccess) {
+          const bookResult = await this.seatRepository.bookSeats(tx, seatIds);
+
+          if (bookResult.count !== seatIds.length) {
+            throw new BadRequestException('Some seats are no longer available');
+          }
+
+          await tx.booking.update({
+            where: {
+              id: booking.id,
+            },
+
+            data: {
+              bookingStatus: 'CONFIRMED',
+
+              paymentStatus: 'SUCCESS',
+
+              confirmedAt: new Date(),
+            },
+          });
+
+          await this.paymentRepository.createPayment(tx, {
+            bookingId: booking.id,
+
+            amount: booking.totalAmount,
+
+            status: 'SUCCESS',
+
+            paidAt: new Date(),
+
+            transactionRef: randomUUID(),
+          });
+
+          return {
+            message: 'Payment successful',
+
+            bookingId: booking.id,
+          };
+        }
+
+        await this.seatRepository.releaseSeats(tx, seatIds);
+
         await tx.booking.update({
           where: {
             id: booking.id,
           },
 
           data: {
-            bookingStatus: 'CONFIRMED',
+            bookingStatus: 'CANCELLED',
 
-            paymentStatus: 'SUCCESS',
-
-            confirmedAt: new Date(),
+            paymentStatus: 'FAILED',
           },
         });
 
-        /**
-         * Create payment record
-         */
         await this.paymentRepository.createPayment(tx, {
           bookingId: booking.id,
 
           amount: booking.totalAmount,
 
-          status: 'SUCCESS',
-
-          paidAt: new Date(),
-
-          transactionRef: `TXN-${Date.now()}`,
+          status: 'FAILED',
         });
 
         return {
-          message: 'Payment successful',
+          message: 'Payment failed',
 
           bookingId: booking.id,
         };
-      }
+      },
 
-      /**
-       * Payment failed
-       * Release seats
-       */
-      await this.seatRepository.releaseSeats(tx, seatIds);
-
-      /**
-       * Update booking
-       */
-      await tx.booking.update({
-        where: {
-          id: booking.id,
-        },
-
-        data: {
-          bookingStatus: 'CANCELLED',
-
-          paymentStatus: 'FAILED',
-        },
-      });
-
-      /**
-       * Create failed payment record
-       */
-      await this.paymentRepository.createPayment(tx, {
-        bookingId: booking.id,
-
-        amount: booking.totalAmount,
-
-        status: 'FAILED',
-      });
-
-      throw new BadRequestException('Payment failed');
-    });
+      {
+        timeout: 10000,
+      },
+    );
   }
 }
