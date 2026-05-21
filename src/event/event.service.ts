@@ -1,5 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { Event, Prisma } from '@prisma/client';
+
 import { BaseService } from '../common/services/base.service';
 
 import { CategoryRepository } from '../category/category.repository';
@@ -9,9 +15,11 @@ import { generateUniqueSlug } from '../common/utils/slugify.util';
 import { CreateEventDto } from './dto/create-event.dto';
 
 import { EventRepository } from './event.repository';
+
 import { buildPagination } from '../common/utils/pagination.util';
 
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
+
 import { QueryEventDto } from './dto/query-event.dto';
 
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -27,6 +35,8 @@ export class EventService extends BaseService<Event> {
   }
 
   override async create(createEventDto: CreateEventDto) {
+    const normalizedTitle = createEventDto.title.trim();
+
     const category = await this.categoryRepository.findById(
       createEventDto.categoryId,
     );
@@ -35,13 +45,23 @@ export class EventService extends BaseService<Event> {
       throw new BadRequestException('Invalid category');
     }
 
+    const existingEvent =
+      await this.eventRepository.findByTitle(normalizedTitle);
+
+    if (existingEvent) {
+      throw new BadRequestException('Event already exists');
+    }
+
     const slug = await generateUniqueSlug(
-      createEventDto.title,
+      normalizedTitle,
+
       async (s) => !!(await this.eventRepository.findBySlug(s)),
     );
 
     return super.create({
       ...createEventDto,
+
+      title: normalizedTitle,
 
       slug,
     });
@@ -62,12 +82,26 @@ export class EventService extends BaseService<Event> {
       categoryId,
     } = queryDto;
 
-    const { skip, take } = buildPagination(page, limit);
+    const safeLimit = Math.min(limit, 50);
+
+    const allowedSortFields = ['createdAt', 'title', 'updatedAt'];
+
+    const finalSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'createdAt';
+
+    const { skip, take } = buildPagination(page, safeLimit);
 
     const where: Prisma.EventWhereInput = {};
+
     if (search) {
-      where.title = { contains: search, mode: 'insensitive' };
+      where.title = {
+        contains: search.trim(),
+
+        mode: 'insensitive',
+      };
     }
+
     if (categoryId) {
       where.categoryId = categoryId;
     }
@@ -80,7 +114,7 @@ export class EventService extends BaseService<Event> {
       take,
 
       orderBy: {
-        [sortBy]: sortOrder,
+        [finalSortBy]: sortOrder,
       },
 
       include: {
@@ -95,11 +129,21 @@ export class EventService extends BaseService<Event> {
 
       page,
 
-      limit,
+      limit: safeLimit,
     });
   }
 
-  override async update(id: string, updateEventDto: UpdateEventDto) {
+  override async update(
+    id: string,
+
+    updateEventDto: UpdateEventDto,
+  ) {
+    const event = await this.eventRepository.findById(id);
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
     if (updateEventDto.categoryId) {
       const category = await this.categoryRepository.findById(
         updateEventDto.categoryId,
@@ -111,15 +155,31 @@ export class EventService extends BaseService<Event> {
     }
 
     let slugUpdate = {};
+
     if (updateEventDto.title) {
+      const normalizedTitle = updateEventDto.title.trim();
+
+      const existing = await this.eventRepository.findByTitle(normalizedTitle);
+
+      if (existing && existing.id !== id) {
+        throw new BadRequestException('Event already exists');
+      }
+
       const newSlug = await generateUniqueSlug(
-        updateEventDto.title,
+        normalizedTitle,
+
         async (s) => {
-          const existing = await this.eventRepository.findBySlug(s);
-          return !!existing && existing.id !== id;
+          const existingSlug = await this.eventRepository.findBySlug(s);
+
+          return !!existingSlug && existingSlug.id !== id;
         },
       );
-      slugUpdate = { slug: newSlug };
+
+      slugUpdate = {
+        slug: newSlug,
+      };
+
+      updateEventDto.title = normalizedTitle;
     }
 
     return super.update(id, {
@@ -128,5 +188,32 @@ export class EventService extends BaseService<Event> {
       ...slugUpdate,
     });
   }
-}
 
+  override async remove(id: string): Promise<any> {
+    const event = await this.eventRepository.findById(id);
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    await this.eventRepository.softDelete(id);
+
+    return {
+      message: 'Event deleted successfully',
+    };
+  }
+
+  async restore(id: string) {
+    const event = await this.eventRepository.findDeletedById(id);
+
+    if (!event) {
+      throw new NotFoundException('Deleted event not found');
+    }
+
+    await this.eventRepository.restore(id);
+
+    return {
+      message: 'Event restored successfully',
+    };
+  }
+}

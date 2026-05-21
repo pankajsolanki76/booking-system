@@ -81,7 +81,6 @@ export class EventController extends BaseController<
     return super.findOne(id);
   }
 
-
   @Patch(':id')
   @Auth(Role.ADMIN)
   @ApiOperation({
@@ -118,5 +117,20 @@ export class EventController extends BaseController<
   override async remove(@Param('id') id: string) {
     return super.remove(id);
   }
+  @Patch(':id/restore')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Restore deleted event',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Event restored successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Deleted event not found',
+  })
+  async restore(@Param('id') id: string) {
+    return this.eventService.restore(id);
+  }
 }
-
