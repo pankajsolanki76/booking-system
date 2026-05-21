@@ -1,4 +1,6 @@
-import { IsOptional, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, MaxLength } from 'class-validator';
+
+import { Transform } from 'class-transformer';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -8,8 +10,10 @@ export class QueryVenueDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     example: 'Rajkot',
   })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   city?: string;
 
   @IsOptional()

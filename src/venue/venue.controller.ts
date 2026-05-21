@@ -81,7 +81,6 @@ export class VenueController extends BaseController<
     return super.findOne(id);
   }
 
-
   @Patch(':id')
   @Auth(Role.ADMIN)
   @ApiOperation({
@@ -118,5 +117,20 @@ export class VenueController extends BaseController<
   override async remove(@Param('id') id: string) {
     return super.remove(id);
   }
+  @Patch(':id/restore')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Restore deleted venue',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Venue restored successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Deleted venue not found',
+  })
+  async restore(@Param('id') id: string) {
+    return this.venueService.restore(id);
+  }
 }
-
