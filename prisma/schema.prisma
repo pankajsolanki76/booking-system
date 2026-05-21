@@ -116,25 +116,38 @@ model Event {
   id String @id @default(cuid())
 
   title String
-  slug  String @unique
+
+  slug String
 
   description String?
 
-  language     String?
+  language String?
+
   durationMins Int?
 
   posterUrl String?
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  isDeleted Boolean @default(false)
+
+  deletedAt DateTime?
 
   shows Show[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([slug, isDeleted])
+
+  @@unique([title, isDeleted])
+
   @@index([title])
+
   @@index([categoryId])
+
+  @@index([isDeleted])
 }
 
 model Show {
