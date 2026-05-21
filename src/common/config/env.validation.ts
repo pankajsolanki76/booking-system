@@ -23,17 +23,17 @@ class EnvironmentVariables {
   PORT: number = 3000;
 
   @IsString()
-  DATABASE_URL: string;
+  DATABASE_URL!: string;
 
   @IsString()
-  JWT_ACCESS_SECRET: string;
+  JWT_ACCESS_SECRET!: string;
 
   @IsString()
   @IsOptional()
   JWT_ACCESS_EXPIRES_IN: string = '15m';
 
   @IsString()
-  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_SECRET!: string;
 
   @IsString()
   @IsOptional()
@@ -41,11 +41,11 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  REDIS_HOST: string;
+  REDIS_HOST!: string;
 
   @IsNumber()
   @IsOptional()
-  REDIS_PORT: number;
+  REDIS_PORT!: number;
 }
 
 export function validate(config: Record<string, any>) {
@@ -67,4 +67,3 @@ export function validate(config: Record<string, any>) {
   }
   return validatedConfig;
 }
-
