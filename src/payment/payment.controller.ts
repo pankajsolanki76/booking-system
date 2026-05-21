@@ -18,6 +18,7 @@ import { BaseController } from '../common/controllers/base.controller';
 import { Role } from '../common/enums/role.enum';
 
 import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @ApiTags('Payments')
 @ApiBearerAuth('JWT-auth')
@@ -44,17 +45,26 @@ export class PaymentController extends BaseController<Payment, any, never> {
     status: 401,
     description: 'Unauthorized',
   })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden',
+  })
   async processPayment(
     @Param('bookingId')
     bookingId: string,
 
     @Body()
     dto: ProcessPaymentDto,
+
+    @CurrentUser()
+    currentUser: any,
   ) {
     return this.paymentService.processPayment(
       bookingId,
 
       dto.simulateSuccess,
+
+      currentUser.id,
     );
   }
 

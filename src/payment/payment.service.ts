@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 
 import { randomUUID } from 'crypto';
 
@@ -32,6 +36,8 @@ export class PaymentService extends BaseService<Payment> {
     bookingId: string,
 
     simulateSuccess: boolean,
+
+    userId: string,
   ) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -43,9 +49,13 @@ export class PaymentService extends BaseService<Payment> {
         if (!booking) {
           throw new BadRequestException('Booking not found');
         }
-        /**
-         * Prevent duplicate payment processing
-         */
+
+        if (booking.userId !== userId) {
+          throw new ForbiddenException(
+            'You are not allowed to process this booking',
+          );
+        }
+
         const existingPayment = await this.paymentRepository.existingPayment(
           tx,
           booking.id,
