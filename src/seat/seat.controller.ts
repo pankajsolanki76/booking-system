@@ -82,12 +82,20 @@ export class SeatController extends BaseController<
     return super.update(id, updateSeatDto);
   }
 
-  @Delete(':id')
+  @Patch(':id/deactivate')
   @Auth(Role.ADMIN)
-  @ApiOperation({ summary: 'Delete screen seat' })
-  override async remove(@Param('id') id: string) {
-    return super.remove(id);
+  @ApiOperation({
+    summary: 'Deactivate seat',
+  })
+  async deactivateSeat(@Param('id') id: string) {
+    return this.seatService.deactivateSeat(id);
+  }
+  @Patch(':id/activate')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Activate seat',
+  })
+  async activateSeat(@Param('id') id: string) {
+    return this.seatService.activateSeat(id);
   }
 }
-
-

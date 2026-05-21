@@ -28,8 +28,11 @@ export class ScreenRepository extends PrismaBaseRepository<Screen> {
 
   async getSeats(screenId: string) {
     return this.prisma.screenSeat.findMany({
-      where: { screenId },
+      where: {
+        screenId,
+
+        isActive: true,
+      },
     });
   }
 }
-

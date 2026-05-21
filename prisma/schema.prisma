@@ -238,21 +238,26 @@ model ScreenSeat {
   id String @id @default(cuid())
 
   screenId String
-  screen   Screen @relation(fields: [screenId], references: [id])
+  screen Screen @relation(fields: [screenId], references: [id])
 
-  seatNumber String
+  seatNumber Int
 
   rowLabel String
 
   price Decimal @db.Decimal(10, 2)
+
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   showSeats ShowSeat[]
 
-  @@unique([screenId, seatNumber])
+ @@unique([screenId, rowLabel, seatNumber])
+
   @@index([screenId])
+
+  @@index([isActive])
 }
 
 model ShowSeat {
