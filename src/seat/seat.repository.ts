@@ -29,11 +29,15 @@ export class SeatRepository extends PrismaBaseRepository<ScreenSeat> {
   async findSeatByNumber(
     screenId: string,
 
-    seatNumber: string,
+    rowLabel: string,
+
+    seatNumber: number,
   ) {
     return this.prisma.screenSeat.findFirst({
       where: {
         screenId,
+
+        rowLabel,
 
         seatNumber,
       },
