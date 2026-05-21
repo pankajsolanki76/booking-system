@@ -180,21 +180,31 @@ model Venue {
   id String @id @default(cuid())
 
   name String
-  slug String @unique
+
+  slug String
 
   address String
-  city    String
 
-  contactEmail String?
-  contactPhone String?
+  city String
+
+  isDeleted Boolean @default(false)
+
+  deletedAt DateTime?
 
   screens Screen[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([name, isDeleted])
+
+  @@unique([slug, isDeleted])
+
   @@index([city])
+
   @@index([name])
+
+  @@index([isDeleted])
 }
 
 model Screen {
