@@ -77,7 +77,6 @@ export class CategoryController extends BaseController<
     return super.findOne(id);
   }
 
-
   @Patch(':id')
   @Auth(Role.ADMIN)
   @ApiOperation({
@@ -116,5 +115,17 @@ export class CategoryController extends BaseController<
   override async remove(@Param('id') id: string) {
     return super.remove(id);
   }
-}
 
+  @Patch(':id/restore')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Restore deleted category',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Category restored successfully',
+  })
+  async restore(@Param('id') id: string) {
+    return this.categoryService.restore(id);
+  }
+}
