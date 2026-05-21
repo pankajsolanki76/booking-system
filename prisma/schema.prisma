@@ -154,15 +154,19 @@ model Show {
   id String @id @default(cuid())
 
   eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
 
   screenId String
-  screen   Screen @relation(fields: [screenId], references: [id])
+  screen Screen @relation(fields: [screenId], references: [id])
 
   startTime DateTime
-  endTime   DateTime
+  endTime DateTime
 
   availableSeats Int
+
+  isDeleted Boolean @default(false)
+
+  deletedAt DateTime?
 
   showSeats ShowSeat[]
 
@@ -172,8 +176,12 @@ model Show {
   updatedAt DateTime @updatedAt
 
   @@index([eventId])
+
   @@index([screenId])
+
   @@index([startTime])
+
+  @@index([isDeleted])
 }
 
 model Venue {

@@ -81,7 +81,6 @@ export class ShowController extends BaseController<
     return super.findOne(id);
   }
 
-
   @Patch(':id')
   @Auth(Role.ADMIN)
   @ApiOperation({
@@ -118,5 +117,20 @@ export class ShowController extends BaseController<
   override async remove(@Param('id') id: string) {
     return super.remove(id);
   }
+  @Patch(':id/restore')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Restore deleted show',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Show restored successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Deleted show not found',
+  })
+  async restore(@Param('id') id: string) {
+    return this.showService.restore(id);
+  }
 }
-
