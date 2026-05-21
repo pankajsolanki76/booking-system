@@ -1,190 +1,113 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
-import { Booking } from '@prisma/client';
-import { BaseService } from '../common/services/base.service';
+import { Injectable } from '@nestjs/common';
+
+import { Prisma, SeatStatus } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
-import { CreateBookingDto } from './dto/create-booking.dto';
-
-import { BookingRepository } from './booking.repository';
-
-import { SeatRepository } from '../seat/seat.repository';
-import { QueryBookingDto } from './dto/query-booking.dto';
-
-import { buildPagination } from '../common/utils/pagination.util';
-
-import { createPaginatedResponse } from '../common/utils/paginated-response.util';
-
 @Injectable()
-export class BookingService extends BaseService<Booking> {
-  constructor(
-    private readonly prisma: PrismaService,
+export class SeatRepository {
+  constructor(private readonly prisma: PrismaService) {}
 
-    private readonly bookingRepository: BookingRepository,
-
-    private readonly seatRepository: SeatRepository,
+  /**
+   * Find available seats
+   * IMPORTANT:
+   * Uses transaction client
+   * to avoid stale reads/race conditions
+   */
+  async findAvailableShowSeats(
+    tx: Prisma.TransactionClient,
+    showId: string,
+    seatIds: string[],
   ) {
-    super(bookingRepository);
-  }
-
-  async createBooking(
-    userId: string,
-
-    createBookingDto: CreateBookingDto,
-  ) {
-    const { showId, seatIds } = createBookingDto;
-
-    if (new Set(seatIds).size !== seatIds.length) {
-      throw new BadRequestException('Duplicate seats selected');
-    }
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    return this.prisma.$transaction(async (tx) => {
-      const availableSeats = await this.seatRepository.findAvailableShowSeats(
-        showId,
-        seatIds,
-      );
-
-      if (availableSeats.length !== seatIds.length) {
-        throw new BadRequestException('Some seats are unavailable');
-      }
-
-      const lockResult = await this.seatRepository.lockSeats(
-        tx,
-        seatIds,
-        expiresAt,
-      );
-
-      if (lockResult.count !== seatIds.length) {
-        throw new BadRequestException('Failed to lock seats');
-      }
-
-      const totalAmount = availableSeats.reduce(
-        (sum, seat) => sum + Number(seat.screenSeat.price),
-        0,
-      );
-
-      const booking = await this.bookingRepository.createBooking(tx, {
-        userId,
-
-        showId,
-
-        totalAmount,
-
-        expiresAt,
-      });
-
-      await this.bookingRepository.createBookingSeats(
-        tx,
-
-        availableSeats.map((seat) => ({
-          bookingId: booking.id,
-
-          showSeatId: seat.id,
-
-          price: seat.screenSeat.price,
-        })),
-      );
-
-      return {
-        message: 'Seats locked successfully',
-
-        bookingId: booking.id,
-
-        expiresAt,
-      };
-    });
-  }
-
-  async getMyBookings(
-    userId: string,
-
-    queryDto: QueryBookingDto,
-  ) {
-    const {
-      page = 1,
-
-      limit = 10,
-
-      sortBy = 'createdAt',
-
-      sortOrder = 'desc',
-    } = queryDto;
-
-    const { skip, take } = buildPagination(page, limit);
-
-    const result = await this.bookingRepository.findUserBookings({
-      userId,
-
+    return tx.showSeat.findMany({
       where: {
-        userId,
-      },
+        id: {
+          in: seatIds,
+        },
 
-      skip,
+        showId,
 
-      take,
-
-      orderBy: {
-        [sortBy]: sortOrder,
+        status: SeatStatus.AVAILABLE,
       },
 
       include: {
-        bookingSeats: {
-          include: {
-            showSeat: {
-              include: {
-                screenSeat: true,
-              },
-            },
-          },
-        },
-
-        show: {
-          include: {
-            event: true,
-
-            screen: {
-              include: {
-                venue: true,
-              },
-            },
-          },
-        },
+        screenSeat: true,
       },
     });
+  }
 
-    return createPaginatedResponse({
-      data: result.data,
+  /**
+   * Lock seats temporarily
+   */
+  async lockSeats(
+    tx: Prisma.TransactionClient,
+    seatIds: string[],
+    lockedUntil: Date,
+  ) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
 
-      total: result.total,
+        status: SeatStatus.AVAILABLE,
+      },
 
-      page,
+      data: {
+        status: SeatStatus.LOCKED,
 
-      limit,
+        lockedAt: new Date(),
+
+        lockedUntil,
+      },
     });
   }
 
-  async getBookingById(
-    bookingId: string,
+  /**
+   * Mark seats as booked
+   */
+  async bookSeats(tx: Prisma.TransactionClient, seatIds: string[]) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
 
-    currentUser: any,
-  ) {
-    const booking = await this.findOne(bookingId); // BaseService.findOne throws NotFoundException
+        status: SeatStatus.LOCKED,
+      },
 
-    const isOwner = booking.userId === currentUser.id;
+      data: {
+        status: SeatStatus.BOOKED,
 
-    const isAdmin = currentUser.role === 'ADMIN';
+        bookedAt: new Date(),
 
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Access denied');
-    }
+        lockedAt: null,
 
-    return booking;
+        lockedUntil: null,
+      },
+    });
+  }
+
+  /**
+   * Release locked seats
+   */
+  async releaseSeats(tx: Prisma.TransactionClient, seatIds: string[]) {
+    return tx.showSeat.updateMany({
+      where: {
+        id: {
+          in: seatIds,
+        },
+
+        status: SeatStatus.LOCKED,
+      },
+
+      data: {
+        status: SeatStatus.AVAILABLE,
+
+        lockedAt: null,
+
+        lockedUntil: null,
+      },
+    });
   }
 }
-

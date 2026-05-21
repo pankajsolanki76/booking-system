@@ -20,26 +20,115 @@ export class BookingExpirationService {
     private readonly seatRepository: SeatRepository,
   ) {}
 
+  /**
+   * Runs every 30 seconds
+   */
   @Cron('*/30 * * * * *')
-  async releaseExpiredBookings() {
-    const expiredBookings = await this.bookingRepository.findExpiredBookings();
+  async releaseExpiredBookings(): Promise<void> {
+    try {
+      /**
+       * Find expired bookings
+       */
+      const expiredBookings =
+        await this.bookingRepository.findExpiredBookings();
 
-    if (!expiredBookings.length) {
-      return;
-    }
+      if (!expiredBookings.length) {
+        return;
+      }
 
-    this.logger.log(`Found ${expiredBookings.length} expired bookings`);
+      this.logger.log(`Found ${expiredBookings.length} expired bookings`);
 
-    for (const booking of expiredBookings) {
-      await this.prisma.$transaction(async (tx) => {
-        const seatIds = booking.bookingSeats.map((seat) => seat.showSeatId);
+      /**
+       * Process bookings sequentially
+       * safer for DB locking
+       */
+      for (const booking of expiredBookings) {
+        try {
+          await this.prisma.$transaction(async (tx) => {
+            /**
+             * IMPORTANT:
+             * Re-fetch latest booking state
+             * INSIDE transaction
+             */
+            const currentBooking = await this.bookingRepository.findBookingById(
+              tx,
+              booking.id,
+            );
 
-        await this.seatRepository.releaseSeats(tx, seatIds);
+            /**
+             * Booking deleted meanwhile
+             */
+            if (!currentBooking) {
+              return;
+            }
 
-        await this.bookingRepository.expireBooking(tx, booking.id);
-      });
+            /**
+             * Skip already processed bookings
+             */
+            if (
+              currentBooking.bookingStatus === 'EXPIRED' ||
+              currentBooking.bookingStatus === 'CONFIRMED' ||
+              currentBooking.bookingStatus === 'CANCELLED'
+            ) {
+              return;
+            }
 
-      this.logger.log(`Released booking ${booking.id}`);
+            /**
+             * Double-check expiry inside transaction
+             */
+            if (new Date() < currentBooking.expiresAt) {
+              return;
+            }
+
+            /**
+             * Extract seat IDs
+             */
+            const seatIds = currentBooking.bookingSeats.map(
+              (seat) => seat.showSeatId,
+            );
+
+            /**
+             * Release locked seats
+             */
+            await this.seatRepository.releaseSeats(tx, seatIds);
+
+            /**
+             * Mark booking expired
+             */
+            await this.bookingRepository.expireBooking(tx, currentBooking.id);
+
+            this.logger.log(`Released expired booking ${currentBooking.id}`);
+          });
+        } catch (error: unknown) {
+          /**
+           * Safe unknown error handling
+           */
+          if (error instanceof Error) {
+            this.logger.error(
+              `Failed to release booking ${booking.id}: ${error.message}`,
+              error.stack,
+            );
+          } else {
+            this.logger.error(
+              `Failed to release booking ${booking.id}: Unknown error`,
+            );
+          }
+        }
+      }
+    } catch (error: unknown) {
+      /**
+       * Global cron failure handling
+       */
+      if (error instanceof Error) {
+        this.logger.error(
+          `Booking expiration cron job failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(
+          'Booking expiration cron job failed with unknown error',
+        );
+      }
     }
   }
 }

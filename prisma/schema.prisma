@@ -87,17 +87,29 @@ model Booking {
 model Category {
   id String @id @default(cuid())
 
-  name String @unique
-  slug String @unique
+  name String
+  slug String
 
   description String?
-  events      Event[]
+
+  isDeleted Boolean @default(false)
+
+  deletedAt DateTime?
+
+  events Event[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([name, isDeleted])
+
+  @@unique([slug, isDeleted])
+
   @@index([name])
+
   @@index([slug])
+
+  @@index([isDeleted])
 }
 
 model Event {

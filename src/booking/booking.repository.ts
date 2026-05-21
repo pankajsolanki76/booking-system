@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
+
 import { Prisma, Booking } from '@prisma/client';
+
 import { PrismaBaseRepository } from '../common/repositories/base.repository';
 
 @Injectable()
@@ -27,6 +30,21 @@ export class BookingRepository extends PrismaBaseRepository<Booking> {
     });
   }
 
+  /**
+   * Transaction-safe booking lookup
+   */
+  async findBookingById(tx: Prisma.TransactionClient, bookingId: string) {
+    return tx.booking.findUnique({
+      where: {
+        id: bookingId,
+      },
+
+      include: {
+        bookingSeats: true,
+      },
+    });
+  }
+
   override async findById(id: string) {
     return this.prisma.booking.findUnique({
       where: { id },
@@ -37,6 +55,9 @@ export class BookingRepository extends PrismaBaseRepository<Booking> {
     });
   }
 
+  /**
+   * Find expired pending bookings
+   */
   async findExpiredBookings() {
     return this.prisma.booking.findMany({
       where: {
@@ -53,6 +74,9 @@ export class BookingRepository extends PrismaBaseRepository<Booking> {
     });
   }
 
+  /**
+   * Expire booking
+   */
   async expireBooking(tx: Prisma.TransactionClient, bookingId: string) {
     return tx.booking.update({
       where: {
@@ -67,23 +91,39 @@ export class BookingRepository extends PrismaBaseRepository<Booking> {
 
   async findUserBookings(params: {
     userId: string;
+
     where?: Prisma.BookingWhereInput;
+
     skip?: number;
+
     take?: number;
-    orderBy?: any;
-    include?: any;
+
+    orderBy?: Prisma.BookingOrderByWithRelationInput;
+
+    include?: Prisma.BookingInclude;
   }) {
-    const { userId, ...rest } = params;
+    const { userId, where, ...rest } = params;
+
+    const finalWhere: Prisma.BookingWhereInput = {
+      ...where,
+
+      userId,
+    };
+
     const [data, total] = await Promise.all([
-      this.findMany(rest),
-      this.count(rest.where),
+      this.findMany({
+        where: finalWhere,
+
+        ...rest,
+      }),
+
+      this.count(finalWhere),
     ]);
 
     return {
       data,
+
       total,
     };
   }
-
 }
-

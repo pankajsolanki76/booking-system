@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+
 import { Payment } from '@prisma/client';
+
 import { BaseService } from '../common/services/base.service';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,26 +31,52 @@ export class PaymentService extends BaseService<Payment> {
 
     simulateSuccess: boolean,
   ) {
-    const booking = await this.bookingRepository.findById(bookingId);
-
-    if (!booking) {
-      throw new BadRequestException('Booking not found');
-    }
-
-    if (booking.bookingStatus !== 'PENDING') {
-      throw new BadRequestException('Booking already processed');
-    }
-
-    if (new Date() > booking.expiresAt) {
-      throw new BadRequestException('Booking lock expired');
-    }
-
     return this.prisma.$transaction(async (tx) => {
-      const seatIds = booking.bookingSeats.map((seat: any) => seat.showSeatId);
+      /**
+       * IMPORTANT:
+       * Fetch latest booking INSIDE transaction
+       */
+      const booking = await this.bookingRepository.findBookingById(
+        tx,
+        bookingId,
+      );
 
+      /**
+       * Booking not found
+       */
+      if (!booking) {
+        throw new BadRequestException('Booking not found');
+      }
+
+      /**
+       * Already processed
+       */
+      if (booking.bookingStatus !== 'PENDING') {
+        throw new BadRequestException('Booking already processed');
+      }
+
+      /**
+       * Expiry check INSIDE transaction
+       * Prevents race conditions
+       */
+      if (new Date() > booking.expiresAt) {
+        throw new BadRequestException('Booking lock expired');
+      }
+
+      const seatIds = booking.bookingSeats.map((seat) => seat.showSeatId);
+
+      /**
+       * Payment Success
+       */
       if (simulateSuccess) {
+        /**
+         * Mark seats booked
+         */
         await this.seatRepository.bookSeats(tx, seatIds);
 
+        /**
+         * Update booking
+         */
         await tx.booking.update({
           where: {
             id: booking.id,
@@ -63,6 +91,9 @@ export class PaymentService extends BaseService<Payment> {
           },
         });
 
+        /**
+         * Create payment record
+         */
         await this.paymentRepository.createPayment(tx, {
           bookingId: booking.id,
 
@@ -82,8 +113,15 @@ export class PaymentService extends BaseService<Payment> {
         };
       }
 
+      /**
+       * Payment failed
+       * Release seats
+       */
       await this.seatRepository.releaseSeats(tx, seatIds);
 
+      /**
+       * Update booking
+       */
       await tx.booking.update({
         where: {
           id: booking.id,
@@ -96,6 +134,9 @@ export class PaymentService extends BaseService<Payment> {
         },
       });
 
+      /**
+       * Create failed payment record
+       */
       await this.paymentRepository.createPayment(tx, {
         bookingId: booking.id,
 
@@ -108,4 +149,3 @@ export class PaymentService extends BaseService<Payment> {
     });
   }
 }
-
