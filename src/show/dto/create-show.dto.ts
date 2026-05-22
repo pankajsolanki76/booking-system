@@ -1,6 +1,15 @@
-import { IsDateString, IsString } from 'class-validator';
+import { IsDateString, IsString, IsOptional, IsNumber, IsArray, ValidateNested } from 'class-validator';
 
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+
+export class CustomPriceOverrideDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsString()
+  rowLabel!: string;
+
+  @IsNumber()
+  price!: number;
+}
 
 export class CreateShowDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
@@ -16,4 +25,14 @@ export class CreateShowDto {
 
   @IsDateString()
   endTime!: string;
+
+  @IsOptional()
+  @IsNumber()
+  priceMultiplier?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CustomPriceOverrideDto)
+  customPrices?: CustomPriceOverrideDto[];
 }

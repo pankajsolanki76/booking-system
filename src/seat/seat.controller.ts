@@ -6,8 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Observable } from 'rxjs';
 import { ScreenSeat } from '@prisma/client';
 
 import { SeatService } from './seat.service';
@@ -59,6 +62,17 @@ export class SeatController extends BaseController<
   })
   async getShowSeats(@Param('showId') showId: string) {
     return this.seatService.getShowSeats(showId);
+  }
+
+  @Sse('show/:showId/sse')
+  @Auth()
+  @ApiOperation({
+    summary: 'Stream real-time seat updates for a show',
+  })
+  async streamShowSeats(
+    @Param('showId') showId: string,
+  ): Promise<Observable<MessageEvent>> {
+    return this.seatService.getShowSeatUpdates(showId);
   }
 
   @Get(':id')

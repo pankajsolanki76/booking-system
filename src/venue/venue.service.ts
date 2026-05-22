@@ -22,9 +22,14 @@ import { createPaginatedResponse } from '../common/utils/paginated-response.util
 
 import { UpdateVenueDto } from './dto/update-venue.dto';
 
+import { PrismaService } from '../prisma/prisma.service';
+
 @Injectable()
 export class VenueService extends BaseService<Venue> {
-  constructor(private readonly venueRepository: VenueRepository) {
+  constructor(
+    private readonly venueRepository: VenueRepository,
+    private readonly prisma: PrismaService,
+  ) {
     super(venueRepository);
   }
 
@@ -169,11 +174,51 @@ export class VenueService extends BaseService<Venue> {
     if (!venue) {
       throw new NotFoundException('Venue not found');
     }
-    if (venue.screens.length > 0) {
-      throw new BadRequestException('Cannot delete venue with active screens');
+
+    // Check for active bookings on shows of screens in this venue
+    const activeBooking = await this.prisma.booking.findFirst({
+      where: {
+        show: {
+          screen: {
+            venueId: id,
+          },
+        },
+        bookingStatus: {
+          in: ['CONFIRMED', 'PENDING'],
+        },
+      },
+    });
+
+    if (activeBooking) {
+      throw new BadRequestException(
+        'Cannot delete venue because it has screens/shows with active bookings',
+      );
     }
 
-    await this.venueRepository.softDelete(id);
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Soft delete venue
+      await tx.venue.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      // 2. Soft delete shows of screens in this venue
+      await tx.show.updateMany({
+        where: {
+          screen: {
+            venueId: id,
+          },
+          isDeleted: false,
+        },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+    });
 
     return {
       message: 'Venue deleted successfully',

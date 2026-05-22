@@ -34,6 +34,7 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  REFUNDED
 }
 
 model User {
@@ -44,6 +45,9 @@ model User {
   password    String
   role        Role   @default(USER)
 
+  isDeleted   Boolean @default(false)
+  deletedAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -51,6 +55,7 @@ model User {
 
   @@index([email])
   @@index([phoneNumber])
+  @@index([isDeleted])
 }
 
 model Booking {
@@ -71,6 +76,7 @@ model Booking {
   expiresAt DateTime
 
   confirmedAt DateTime?
+  checkedInAt DateTime?
   
   payment Payment?
 
@@ -271,12 +277,15 @@ model ShowSeat {
 
   status SeatStatus @default(AVAILABLE)
 
+  price Decimal @db.Decimal(10, 2)
+
   lockedAt DateTime?
 
   lockedUntil DateTime?
 
   bookedAt     DateTime?
   bookingSeats BookingSeat[]
+  history      ShowSeatHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -284,6 +293,19 @@ model ShowSeat {
   @@unique([showId, screenSeatId])
   @@index([showId])
   @@index([status])
+}
+
+model ShowSeatHistory {
+  id           String     @id @default(cuid())
+  showSeatId   String
+  showSeat     ShowSeat   @relation(fields: [showSeatId], references: [id])
+  oldStatus    SeatStatus?
+  newStatus    SeatStatus
+  changedBy    String?
+  changedAt    DateTime   @default(now())
+
+  @@index([showSeatId])
+  @@index([changedAt])
 }
 
 model BookingSeat {

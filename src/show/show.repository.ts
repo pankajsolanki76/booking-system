@@ -23,10 +23,20 @@ export class ShowRepository extends PrismaBaseRepository<Show> {
 
     include?: Prisma.ShowInclude;
   }) {
-    const [data, total] = await Promise.all([
-      this.findMany(params),
+    const finalWhere: Prisma.ShowWhereInput = {
+      isDeleted: false,
 
-      this.count(params.where),
+      ...params.where,
+    };
+
+    const [data, total] = await Promise.all([
+      this.findMany({
+        ...params,
+
+        where: finalWhere,
+      }),
+
+      this.count(finalWhere),
     ]);
 
     return {
@@ -36,15 +46,19 @@ export class ShowRepository extends PrismaBaseRepository<Show> {
     };
   }
 
-  async findOverlappingShow(params: {
-    screenId: string;
+  async findOverlappingShow(
+    params: {
+      screenId: string;
 
-    startTime: Date;
+      startTime: Date;
 
-    endTime: Date;
+      endTime: Date;
 
-    excludeShowId?: string;
-  }) {
+      excludeShowId?: string;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx || this.prisma;
     const {
       screenId,
 
@@ -55,9 +69,11 @@ export class ShowRepository extends PrismaBaseRepository<Show> {
       excludeShowId,
     } = params;
 
-    return this.prisma.show.findFirst({
+    return client.show.findFirst({
       where: {
         screenId,
+
+        isDeleted: false,
 
         ...(excludeShowId
           ? {

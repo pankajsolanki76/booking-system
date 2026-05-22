@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { BaseService } from '../common/services/base.service';
 
@@ -46,6 +46,39 @@ export class UserService extends BaseService<User> {
         email: user.email,
         role: user.role,
       },
+    };
+  }
+
+  override async findAll(params: any): Promise<any> {
+    const where = {
+      isDeleted: false,
+      ...params.where,
+    };
+    return super.findAll({
+      ...params,
+      where,
+    });
+  }
+
+  override async remove(id: string): Promise<any> {
+    const user = await this.userRepository.findById(id);
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    await this.userRepository.update(id, {
+      name: 'Deleted User',
+      email: `deleted_${id}_${randomSuffix}@booking.system`,
+      phoneNumber: `deleted_${id}_${randomSuffix}`,
+      password: '',
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+
+    return {
+      message: 'User deleted successfully',
     };
   }
 }

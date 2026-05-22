@@ -55,65 +55,97 @@ export class ShowService extends BaseService<Show> {
       throw new BadRequestException('Show start time must be in the future');
     }
 
-    const event = await this.eventRepository.findById(createShowDto.eventId);
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const event = await tx.event.findFirst({
+            where: { id: createShowDto.eventId, isDeleted: false },
+          });
 
-    if (!event) {
-      throw new BadRequestException('Invalid event');
-    }
+          if (!event) {
+            throw new BadRequestException('Invalid event');
+          }
 
-    const screen = await this.screenRepository.findById(createShowDto.screenId);
+          const screen = await tx.screen.findUnique({
+            where: { id: createShowDto.screenId },
+          });
 
-    if (!screen) {
-      throw new BadRequestException('Invalid screen');
-    }
+          if (!screen) {
+            throw new BadRequestException('Invalid screen');
+          }
 
-    const overlappingShow = await this.showRepository.findOverlappingShow({
-      screenId: createShowDto.screenId,
+          const overlappingShow = await this.showRepository.findOverlappingShow(
+            {
+              screenId: createShowDto.screenId,
+              startTime,
+              endTime,
+            },
+            tx,
+          );
 
-      startTime,
+          if (overlappingShow) {
+            throw new BadRequestException(
+              'Screen already has another show scheduled during this time',
+            );
+          }
 
-      endTime,
-    });
+          const show = await tx.show.create({
+            data: {
+              eventId: createShowDto.eventId,
+              screenId: createShowDto.screenId,
+              startTime,
+              endTime,
+              availableSeats: screen.totalSeats,
+            },
+          });
 
-    if (overlappingShow) {
-      throw new BadRequestException(
-        'Screen already has another show scheduled during this time',
+          const screenSeats = await tx.screenSeat.findMany({
+            where: {
+              screenId: screen.id,
+              isActive: true,
+            },
+          });
+
+          await tx.showSeat.createMany({
+            data: screenSeats.map((seat) => {
+              let seatPrice = Number(seat.price);
+              if (createShowDto.priceMultiplier !== undefined) {
+                seatPrice *= createShowDto.priceMultiplier;
+              }
+              if (createShowDto.customPrices) {
+                const override = createShowDto.customPrices.find(
+                  (cp) => cp.rowLabel.trim().toUpperCase() === seat.rowLabel.trim().toUpperCase(),
+                );
+                if (override) {
+                  seatPrice = override.price;
+                }
+              }
+              return {
+                showId: show.id,
+                screenSeatId: seat.id,
+                price: new Prisma.Decimal(seatPrice),
+              };
+            }),
+          });
+
+          return show;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 10000,
+        },
       );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        throw new BadRequestException(
+          'A concurrency conflict occurred. Please try scheduling again.',
+        );
+      }
+      throw error;
     }
-
-    return this.prisma.$transaction(
-      async (tx) => {
-        const show = await tx.show.create({
-          data: {
-            eventId: createShowDto.eventId,
-
-            screenId: createShowDto.screenId,
-
-            startTime,
-
-            endTime,
-
-            availableSeats: screen.totalSeats,
-          },
-        });
-
-        const screenSeats = await this.screenRepository.getSeats(screen.id);
-
-        await tx.showSeat.createMany({
-          data: screenSeats.map((seat) => ({
-            showId: show.id,
-
-            screenSeatId: seat.id,
-          })),
-        });
-
-        return show;
-      },
-
-      {
-        timeout: 10000,
-      },
-    );
   }
 
   override async findAll(queryDto: QueryShowDto) {
@@ -188,47 +220,140 @@ export class ShowService extends BaseService<Show> {
 
     data: any,
   ) {
-    const existingShow = await this.showRepository.findById(id);
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const existingShow = await tx.show.findFirst({
+            where: {
+              id,
+              isDeleted: false,
+            },
+            include: {
+              bookings: true,
+            },
+          });
 
-    if (!existingShow) {
-      throw new NotFoundException('Show not found');
-    }
+          if (!existingShow) {
+            throw new NotFoundException('Show not found');
+          }
 
-    const startTime = data.startTime
-      ? new Date(data.startTime)
-      : existingShow.startTime;
+          // 1. Prevent updating past shows
+          if (existingShow.startTime <= new Date()) {
+            throw new BadRequestException('Cannot update a show that has already started or ended');
+          }
 
-    const endTime = data.endTime
-      ? new Date(data.endTime)
-      : existingShow.endTime;
+          // 2. Prevent setting new start time in the past
+          if (data.startTime && new Date(data.startTime) <= new Date()) {
+            throw new BadRequestException('New show start time must be in the future');
+          }
 
-    if (endTime <= startTime) {
-      throw new BadRequestException('End time must be after start time');
-    }
+          const hasBookings = existingShow.bookings.some(
+            (booking) =>
+              booking.bookingStatus === 'CONFIRMED' ||
+              booking.bookingStatus === 'PENDING',
+          );
 
-    const overlappingShow = await this.showRepository.findOverlappingShow({
-      screenId: data.screenId || existingShow.screenId,
+          const isTimeChanged = (data.startTime && new Date(data.startTime).getTime() !== existingShow.startTime.getTime()) ||
+                                (data.endTime && new Date(data.endTime).getTime() !== existingShow.endTime.getTime());
+          const isScreenChanged = data.screenId && data.screenId !== existingShow.screenId;
 
-      startTime,
+          if (hasBookings && (isTimeChanged || isScreenChanged)) {
+            throw new BadRequestException('Cannot update show time or screen when active bookings exist');
+          }
 
-      endTime,
+          const startTime = data.startTime
+            ? new Date(data.startTime)
+            : existingShow.startTime;
 
-      excludeShowId: id,
-    });
+          const endTime = data.endTime
+            ? new Date(data.endTime)
+            : existingShow.endTime;
 
-    if (overlappingShow) {
-      throw new BadRequestException(
-        'Screen already has another show scheduled during this time',
+          if (endTime <= startTime) {
+            throw new BadRequestException('End time must be after start time');
+          }
+
+          const screenId = data.screenId || existingShow.screenId;
+          const overlappingShow = await this.showRepository.findOverlappingShow(
+            {
+              screenId,
+              startTime,
+              endTime,
+              excludeShowId: id,
+            },
+            tx,
+          );
+
+          if (overlappingShow) {
+            throw new BadRequestException(
+              'Screen already has another show scheduled during this time',
+            );
+          }
+
+          const { priceMultiplier, customPrices, ...showData } = data;
+
+          if (priceMultiplier !== undefined || customPrices !== undefined) {
+            const screenSeats = await tx.screenSeat.findMany({
+              where: {
+                screenId,
+                isActive: true,
+              },
+            });
+
+            for (const seat of screenSeats) {
+              let seatPrice = Number(seat.price);
+              if (priceMultiplier !== undefined) {
+                seatPrice *= priceMultiplier;
+              }
+              if (customPrices) {
+                const override = customPrices.find(
+                  (cp: any) => cp.rowLabel.trim().toUpperCase() === seat.rowLabel.trim().toUpperCase(),
+                );
+                if (override) {
+                  seatPrice = override.price;
+                }
+              }
+
+              await tx.showSeat.updateMany({
+                where: {
+                  showId: id,
+                  screenSeatId: seat.id,
+                  status: {
+                    in: ['AVAILABLE', 'LOCKED'],
+                  },
+                },
+                data: {
+                  price: new Prisma.Decimal(seatPrice),
+                },
+              });
+            }
+          }
+
+          return tx.show.update({
+            where: { id },
+            data: {
+              ...showData,
+              startTime,
+              endTime,
+            },
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 10000,
+        },
       );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        throw new BadRequestException(
+          'A concurrency conflict occurred. Please try updating again.',
+        );
+      }
+      throw error;
     }
-
-    return super.update(id, {
-      ...data,
-
-      startTime,
-
-      endTime,
-    });
   }
   override async remove(id: string): Promise<any> {
     const show = await this.showRepository.findById(id);

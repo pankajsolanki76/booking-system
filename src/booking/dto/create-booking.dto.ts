@@ -1,4 +1,4 @@
-import { ArrayNotEmpty, IsArray, IsString } from 'class-validator';
+import { ArrayNotEmpty, ArrayMaxSize, IsArray, IsString } from 'class-validator';
 
 export class CreateBookingDto {
   @IsString()
@@ -6,5 +6,7 @@ export class CreateBookingDto {
 
   @IsArray()
   @ArrayNotEmpty()
+  @ArrayMaxSize(6)
   seatIds!: string[];
 }
+

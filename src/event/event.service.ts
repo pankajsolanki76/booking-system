@@ -24,12 +24,16 @@ import { QueryEventDto } from './dto/query-event.dto';
 
 import { UpdateEventDto } from './dto/update-event.dto';
 
+import { PrismaService } from '../prisma/prisma.service';
+
 @Injectable()
 export class EventService extends BaseService<Event> {
   constructor(
     private readonly eventRepository: EventRepository,
 
     private readonly categoryRepository: CategoryRepository,
+
+    private readonly prisma: PrismaService,
   ) {
     super(eventRepository);
   }
@@ -196,7 +200,46 @@ export class EventService extends BaseService<Event> {
       throw new NotFoundException('Event not found');
     }
 
-    await this.eventRepository.softDelete(id);
+    // Check for active bookings on shows of this event
+    const activeBooking = await this.prisma.booking.findFirst({
+      where: {
+        show: {
+          eventId: id,
+        },
+        bookingStatus: {
+          in: ['CONFIRMED', 'PENDING'],
+        },
+      },
+    });
+
+    if (activeBooking) {
+      throw new BadRequestException(
+        'Cannot delete event because it has shows with active bookings',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Soft delete event
+      await tx.event.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      // 2. Soft delete shows of this event
+      await tx.show.updateMany({
+        where: {
+          eventId: id,
+          isDeleted: false,
+        },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+    });
 
     return {
       message: 'Event deleted successfully',
@@ -208,6 +251,20 @@ export class EventService extends BaseService<Event> {
 
     if (!event) {
       throw new NotFoundException('Deleted event not found');
+    }
+
+    const existingEvent = await this.eventRepository.findByTitle(event.title);
+    if (existingEvent) {
+      throw new BadRequestException(
+        'Cannot restore event because an active event with the same title already exists',
+      );
+    }
+
+    const existingSlug = await this.eventRepository.findBySlug(event.slug);
+    if (existingSlug) {
+      throw new BadRequestException(
+        'Cannot restore event because slug is already in use',
+      );
     }
 
     await this.eventRepository.restore(id);

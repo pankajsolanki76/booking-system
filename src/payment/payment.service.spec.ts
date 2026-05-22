@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BookingRepository } from '../booking/booking.repository';
 import { PaymentRepository } from './payment.repository';
 import { SeatRepository } from '../seat/seat.repository';
+import { TicketService } from '../ticket/ticket.service';
+import { StripeService } from './stripe.service';
 
 describe('PaymentService', () => {
   let service: PaymentService;
@@ -35,6 +37,20 @@ describe('PaymentService', () => {
           useValue: {
             bookSeats: jest.fn(),
             releaseSeats: jest.fn(),
+          },
+        },
+        {
+          provide: TicketService,
+          useValue: {
+            dispatchTicket: jest.fn(),
+          },
+        },
+        {
+          provide: StripeService,
+          useValue: {
+            createCheckoutSession: jest.fn(),
+            verifyWebhook: jest.fn(),
+            createRefund: jest.fn(),
           },
         },
       ],

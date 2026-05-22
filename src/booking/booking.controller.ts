@@ -107,11 +107,50 @@ export class BookingController extends BaseController<
     return super.update(id, updateBookingDto);
   }
 
+  @Patch(':id/cancel')
+  @Auth()
+  @ApiOperation({ summary: 'Cancel booking (User or Admin)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Booking cancelled successfully',
+  })
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.bookingService.cancelBooking(id, user.id, user.role);
+  }
+
   @Delete(':id')
   @Auth(Role.ADMIN)
   @ApiOperation({ summary: 'Cancel/Delete booking (Admin only)' })
   override async remove(@Param('id') id: string) {
     return super.remove(id);
+  }
+
+  @Get(':id/ticket')
+  @Auth()
+  @ApiOperation({ summary: 'Get ticket and QR code (Owner or Admin)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ticket details retrieved successfully',
+  })
+  async getTicket(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.bookingService.getTicketDetails(id, user);
+  }
+
+  @Patch(':id/verify-ticket')
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Verify ticket and check-in (Admin only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Check-in successful',
+  })
+  async verifyTicket(@Param('id') id: string) {
+    return this.bookingService.verifyTicket(id);
   }
 }
 

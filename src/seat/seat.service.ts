@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, MessageEvent } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
 
 import { ScreenSeat } from '@prisma/client';
 
@@ -10,12 +12,16 @@ import { CreateScreenSeatDto } from './dto/create-screen-seat.dto';
 
 import { SeatRepository } from './seat.repository';
 
+import { PrismaService } from '../prisma/prisma.service';
+
 @Injectable()
 export class SeatService extends BaseService<ScreenSeat> {
   constructor(
     private readonly seatRepository: SeatRepository,
 
     private readonly screenRepository: ScreenRepository,
+
+    private readonly prisma: PrismaService,
   ) {
     super(seatRepository);
   }
@@ -85,6 +91,28 @@ export class SeatService extends BaseService<ScreenSeat> {
       throw new BadRequestException('Seat already inactive');
     }
 
+    // Check if there are active locks or confirmed bookings in future/active shows
+    const activeBookingOrLock = await this.prisma.showSeat.findFirst({
+      where: {
+        screenSeatId: id,
+        status: {
+          in: ['LOCKED', 'BOOKED'],
+        },
+        show: {
+          isDeleted: false,
+          endTime: {
+            gt: new Date(),
+          },
+        },
+      },
+    });
+
+    if (activeBookingOrLock) {
+      throw new BadRequestException(
+        'Cannot deactivate seat as it has active locks or confirmed bookings for future shows',
+      );
+    }
+
     await this.seatRepository.deactivateSeat(id);
 
     return {
@@ -111,5 +139,20 @@ export class SeatService extends BaseService<ScreenSeat> {
     return {
       message: 'Seat activated successfully',
     };
+  }
+
+  /**
+   * Get real-time seat update stream for a show (SSE)
+   */
+  getShowSeatUpdates(showId: string): Observable<MessageEvent> {
+    return this.seatRepository.seatUpdates$.asObservable().pipe(
+      filter((event) => event.showId === showId),
+      map((event) => ({
+        data: {
+          seatIds: event.seatIds,
+          status: event.status,
+        },
+      } as MessageEvent)),
+    );
   }
 }

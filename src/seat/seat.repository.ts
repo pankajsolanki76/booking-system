@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
-
-import { Prisma, ScreenSeat } from '@prisma/client';
-
+import { Prisma, ScreenSeat, SeatStatus } from '@prisma/client';
 import { PrismaBaseRepository } from '../common/repositories/base.repository';
+import { Subject } from 'rxjs';
 
 @Injectable()
 export class SeatRepository extends PrismaBaseRepository<ScreenSeat> {
+  public readonly seatUpdates$ = new Subject<{
+    showId: string;
+    seatIds: string[];
+    status: SeatStatus;
+  }>();
+
   constructor(private readonly prisma: PrismaService) {
     super(prisma.screenSeat);
   }
@@ -68,24 +72,29 @@ export class SeatRepository extends PrismaBaseRepository<ScreenSeat> {
 
   async findAvailableShowSeats(
     showId: string,
-
     seatIds: string[],
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.showSeat.findMany({
+    const client = tx || this.prisma;
+    return client.showSeat.findMany({
       where: {
         id: {
           in: seatIds,
         },
-
         showId,
-
-        status: 'AVAILABLE',
-
         screenSeat: {
           isActive: true,
         },
+        OR: [
+          { status: 'AVAILABLE' },
+          {
+            status: 'LOCKED',
+            lockedUntil: {
+              lt: new Date(),
+            },
+          },
+        ],
       },
-
       include: {
         screenSeat: true,
       },
@@ -94,82 +103,120 @@ export class SeatRepository extends PrismaBaseRepository<ScreenSeat> {
 
   async lockSeats(
     tx: Prisma.TransactionClient,
-
+    showId: string,
     seatIds: string[],
-
     expiresAt: Date,
+    changedBy = 'SYSTEM',
   ) {
-    return tx.showSeat.updateMany({
+    const result = await tx.showSeat.updateMany({
       where: {
         id: {
           in: seatIds,
         },
-
-        status: 'AVAILABLE',
+        showId,
+        OR: [
+          { status: 'AVAILABLE' },
+          {
+            status: 'LOCKED',
+            lockedUntil: {
+              lt: new Date(),
+            },
+          },
+        ],
       },
-
       data: {
         status: 'LOCKED',
-
         lockedAt: new Date(),
-
         lockedUntil: expiresAt,
       },
     });
+
+    if (result.count > 0) {
+      await tx.showSeatHistory.createMany({
+        data: seatIds.map((id) => ({
+          showSeatId: id,
+          oldStatus: 'AVAILABLE',
+          newStatus: 'LOCKED',
+          changedBy,
+        })),
+      });
+    }
+
+    return result;
   }
 
   async bookSeats(
     tx: Prisma.TransactionClient,
-
+    showId: string,
     seatIds: string[],
+    changedBy = 'SYSTEM',
   ) {
-    return tx.showSeat.updateMany({
+    const result = await tx.showSeat.updateMany({
       where: {
         id: {
           in: seatIds,
         },
-
+        showId,
         status: 'LOCKED',
-
         lockedUntil: {
           gt: new Date(),
         },
       },
-
       data: {
         status: 'BOOKED',
-
         bookedAt: new Date(),
-
         lockedAt: null,
-
         lockedUntil: null,
       },
     });
+
+    if (result.count > 0) {
+      await tx.showSeatHistory.createMany({
+        data: seatIds.map((id) => ({
+          showSeatId: id,
+          oldStatus: 'LOCKED',
+          newStatus: 'BOOKED',
+          changedBy,
+        })),
+      });
+    }
+
+    return result;
   }
 
   async releaseSeats(
     tx: Prisma.TransactionClient,
-
+    showId: string,
     seatIds: string[],
+    changedBy = 'SYSTEM',
   ) {
-    return tx.showSeat.updateMany({
+    const result = await tx.showSeat.updateMany({
       where: {
         id: {
           in: seatIds,
         },
-
+        showId,
         status: 'LOCKED',
       },
-
       data: {
         status: 'AVAILABLE',
-
         lockedAt: null,
-
         lockedUntil: null,
       },
     });
+
+    if (result.count > 0) {
+      await tx.showSeatHistory.createMany({
+        data: seatIds.map((id) => ({
+          showSeatId: id,
+          oldStatus: 'LOCKED',
+          newStatus: 'AVAILABLE',
+          changedBy,
+        })),
+      });
+    }
+
+    return result;
   }
 
   async hasShowSeats(screenSeatId: string) {

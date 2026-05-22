@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CategoryService } from './category.service';
 import { CategoryRepository } from './category.repository';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('CategoryService', () => {
   let service: CategoryService;
@@ -19,6 +20,21 @@ describe('CategoryService', () => {
             findById: jest.fn(),
             update: jest.fn(),
             delete: jest.fn(),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            booking: {
+              findFirst: jest.fn(),
+            },
+            $transaction: jest.fn((cb) =>
+              cb({
+                category: { update: jest.fn() },
+                event: { updateMany: jest.fn() },
+                show: { updateMany: jest.fn() },
+              }),
+            ),
           },
         },
       ],

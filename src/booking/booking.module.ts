@@ -7,9 +7,11 @@ import { BookingRepository } from './booking.repository';
 
 import { SeatModule } from '../seat/seat.module';
 import { BookingExpirationService } from './booking-expiration.service';
+import { TicketModule } from '../ticket/ticket.module';
+import { StripeModule } from '../payment/stripe.module';
 
 @Module({
-  imports: [SeatModule],
+  imports: [SeatModule, TicketModule, StripeModule],
 
   controllers: [BookingController],
 

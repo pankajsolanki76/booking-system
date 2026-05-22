@@ -44,7 +44,7 @@ export class BookingExpirationService {
        */
       for (const booking of expiredBookings) {
         try {
-          await this.prisma.$transaction(async (tx) => {
+          const releasedInfo = await this.prisma.$transaction(async (tx) => {
             /**
              * IMPORTANT:
              * Re-fetch latest booking state
@@ -90,15 +90,32 @@ export class BookingExpirationService {
             /**
              * Release locked seats
              */
-            await this.seatRepository.releaseSeats(tx, seatIds);
+            await this.seatRepository.releaseSeats(
+              tx,
+              currentBooking.showId,
+              seatIds,
+              'SYSTEM_CRON_EXPIRATION',
+            );
 
             /**
              * Mark booking expired
              */
             await this.bookingRepository.expireBooking(tx, currentBooking.id);
 
-            this.logger.log(`Released expired booking ${currentBooking.id}`);
+            return {
+              showId: currentBooking.showId,
+              seatIds,
+            };
           });
+
+          if (releasedInfo && releasedInfo.showId) {
+            this.seatRepository.seatUpdates$.next({
+              showId: releasedInfo.showId,
+              seatIds: releasedInfo.seatIds,
+              status: 'AVAILABLE',
+            });
+            this.logger.log(`Released expired booking ${booking.id}`);
+          }
         } catch (error: unknown) {
           /**
            * Safe unknown error handling
