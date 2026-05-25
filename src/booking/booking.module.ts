@@ -9,9 +9,10 @@ import { SeatModule } from '../seat/seat.module';
 import { BookingExpirationService } from './booking-expiration.service';
 import { TicketModule } from '../ticket/ticket.module';
 import { StripeModule } from '../payment/stripe.module';
+import { WaitlistModule } from '../waitlist/waitlist.module';
 
 @Module({
-  imports: [SeatModule, TicketModule, StripeModule],
+  imports: [SeatModule, TicketModule, StripeModule, WaitlistModule],
 
   controllers: [BookingController],
 

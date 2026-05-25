@@ -7,6 +7,7 @@ export class CustomPriceOverrideDto {
   @IsString()
   rowLabel!: string;
 
+  @Type(() => Number)
   @IsNumber()
   price!: number;
 }
@@ -26,6 +27,7 @@ export class CreateShowDto {
   @IsDateString()
   endTime!: string;
 
+  @Type(() => Number)
   @IsOptional()
   @IsNumber()
   priceMultiplier?: number;

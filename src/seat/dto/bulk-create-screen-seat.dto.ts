@@ -5,14 +5,13 @@ import {
   MaxLength,
   Min,
   MinLength,
-  IsEnum,
   IsOptional,
+  IsEnum,
 } from 'class-validator';
-
 import { Transform, Type } from 'class-transformer';
 import { SeatType } from '@prisma/client';
 
-export class CreateScreenSeatDto {
+export class BulkCreateScreenSeatDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   screenId!: string;
@@ -28,26 +27,14 @@ export class CreateScreenSeatDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  seatNumber!: number;
+  numberOfSeats!: number;
 
   @Type(() => Number)
   @IsNumber({
     maxDecimalPlaces: 2,
   })
   @Min(0)
-  price!: number;
-
-  @Type(() => Number)
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  gridRow?: number;
-
-  @Type(() => Number)
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  gridCol?: number;
+  basePrice!: number;
 
   @IsOptional()
   @IsEnum(SeatType)

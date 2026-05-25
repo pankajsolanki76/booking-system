@@ -2,13 +2,14 @@ import { BadRequestException, Injectable, MessageEvent } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
 
-import { ScreenSeat } from '@prisma/client';
+import { Prisma, ScreenSeat } from '@prisma/client';
 
 import { BaseService } from '../common/services/base.service';
 
 import { ScreenRepository } from '../screen/screen.repository';
 
 import { CreateScreenSeatDto } from './dto/create-screen-seat.dto';
+import { BulkCreateScreenSeatDto } from './dto/bulk-create-screen-seat.dto';
 
 import { SeatRepository } from './seat.repository';
 
@@ -68,6 +69,44 @@ export class SeatService extends BaseService<ScreenSeat> {
 
       seatNumber,
     });
+  }
+
+  /**
+   * Bulk create screen seats for a row
+   */
+  async bulkCreateScreenSeats(bulkDto: BulkCreateScreenSeatDto) {
+    const screen = await this.screenRepository.findById(bulkDto.screenId);
+
+    if (!screen) {
+      throw new BadRequestException('Invalid screen');
+    }
+
+    const rowLabel = bulkDto.rowLabel.trim().toUpperCase();
+    const seatsToCreate: Prisma.ScreenSeatCreateManyInput[] = [];
+
+    for (let i = 1; i <= bulkDto.numberOfSeats; i++) {
+      seatsToCreate.push({
+        screenId: bulkDto.screenId,
+        rowLabel,
+        seatNumber: i,
+        price: bulkDto.basePrice,
+        type: bulkDto.type,
+      });
+    }
+
+    try {
+      const result = await this.prisma.screenSeat.createMany({
+        data: seatsToCreate,
+        skipDuplicates: true,
+      });
+
+      return {
+        message: `Successfully created ${result.count} seats for row ${rowLabel}`,
+        count: result.count,
+      };
+    } catch (error) {
+      throw new BadRequestException('Failed to bulk create seats');
+    }
   }
 
   /**

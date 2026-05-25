@@ -26,6 +26,7 @@ import { BaseController } from '../common/controllers/base.controller';
 import { Role } from '../common/enums/role.enum';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth('JWT-auth')
@@ -109,16 +110,17 @@ export class BookingController extends BaseController<
 
   @Patch(':id/cancel')
   @Auth()
-  @ApiOperation({ summary: 'Cancel booking (User or Admin)' })
+  @ApiOperation({ summary: 'Cancel booking (Partial or Full)' })
   @ApiResponse({
     status: 200,
     description: 'Booking cancelled successfully',
   })
   async cancel(
     @Param('id') id: string,
+    @Body() dto: CancelBookingDto,
     @CurrentUser() user: any,
   ) {
-    return this.bookingService.cancelBooking(id, user.id, user.role);
+    return this.bookingService.cancelBooking(id, user.id, user.role, dto.seatIds);
   }
 
   @Delete(':id')

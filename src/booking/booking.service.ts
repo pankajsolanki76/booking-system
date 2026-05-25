@@ -21,6 +21,7 @@ import { buildPagination } from '../common/utils/pagination.util';
 import { createPaginatedResponse } from '../common/utils/paginated-response.util';
 import { TicketService } from '../ticket/ticket.service';
 import { StripeService } from '../payment/stripe.service';
+import { WaitlistService } from '../waitlist/waitlist.service';
 
 @Injectable()
 export class BookingService extends BaseService<Booking> {
@@ -34,6 +35,8 @@ export class BookingService extends BaseService<Booking> {
     private readonly ticketService: TicketService,
 
     private readonly stripeService: StripeService,
+
+    private readonly waitlistService: WaitlistService,
   ) {
     super(bookingRepository);
   }
@@ -78,16 +81,22 @@ export class BookingService extends BaseService<Booking> {
         throw new BadRequestException('Failed to lock seats');
       }
 
-      const totalAmount = availableSeats.reduce(
+      const baseAmount = availableSeats.reduce(
         (sum, seat) => sum + Number(seat.price),
         0,
       );
+      const taxes = baseAmount * 0.10; // 10% tax
+      const convenienceFee = 2.00 * availableSeats.length; // 2.00 per ticket
+      const totalAmount = baseAmount + taxes + convenienceFee;
 
       const booking = await this.bookingRepository.createBooking(tx, {
         userId,
 
         showId,
 
+        baseAmount,
+        taxes,
+        convenienceFee,
         totalAmount,
 
         expiresAt,
@@ -210,7 +219,7 @@ export class BookingService extends BaseService<Booking> {
     return booking;
   }
 
-  async cancelBooking(bookingId: string, userId: string, userRole: string) {
+  async cancelBooking(bookingId: string, userId: string, userRole: string, seatIdsToCancel?: string[]) {
     const result = await this.prisma.$transaction(async (tx) => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
@@ -234,13 +243,42 @@ export class BookingService extends BaseService<Booking> {
         throw new BadRequestException(`Booking cannot be cancelled because its status is ${booking.bookingStatus}`);
       }
 
-      // Verify cancellation window
+      let seatsToRelease = booking.bookingSeats.map((bs) => bs.showSeatId);
+      let isPartial = false;
+
+      if (seatIdsToCancel && seatIdsToCancel.length > 0) {
+        const invalidSeats = seatIdsToCancel.filter(id => !seatsToRelease.includes(id));
+        if (invalidSeats.length > 0) {
+          throw new BadRequestException('Some specified seats do not belong to this booking');
+        }
+        seatsToRelease = seatIdsToCancel;
+        isPartial = seatsToRelease.length < booking.bookingSeats.length;
+      }
+
+      let refundAmount = 0;
+      let baseRefund = 0;
+      
+      if (isPartial) {
+        const cancelledBookingSeats = booking.bookingSeats.filter(bs => seatsToRelease.includes(bs.showSeatId));
+        baseRefund = cancelledBookingSeats.reduce((sum, bs) => sum + Number(bs.price), 0);
+      } else {
+        baseRefund = Number(booking.baseAmount);
+      }
+      
+      const taxRefund = baseRefund * 0.10;
+      let totalEligibleRefund = baseRefund + taxRefund;
+
+      // Verify cancellation window and apply tiers
       if (userRole !== 'ADMIN') {
-        const cutoff = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours from now
-        if (booking.show.startTime <= cutoff) {
-          throw new BadRequestException(
-            'Bookings can only be cancelled at least 2 hours before the show starts',
-          );
+        const timeToShowMs = booking.show.startTime.getTime() - Date.now();
+        const hoursToShow = timeToShowMs / (1000 * 60 * 60);
+
+        if (hoursToShow < 12) {
+           totalEligibleRefund = 0; // No refund < 12h
+        } else if (hoursToShow < 24) {
+           totalEligibleRefund = totalEligibleRefund * 0.5; // 50% refund between 12h and 24h
+        } else {
+           // 100% refund of base and tax if > 24h
         }
       } else {
         // Admin: verify show has not started yet
@@ -248,14 +286,14 @@ export class BookingService extends BaseService<Booking> {
           throw new BadRequestException('Cannot cancel booking after the show has started');
         }
       }
+      
+      refundAmount = totalEligibleRefund;
 
-      const seatIds = booking.bookingSeats.map((bs) => bs.showSeatId);
-
-      if (seatIds.length > 0) {
+      if (seatsToRelease.length > 0) {
         // Fetch current status of the seats for the history log
         const currentSeats = await tx.showSeat.findMany({
           where: {
-            id: { in: seatIds },
+            id: { in: seatsToRelease },
             showId: booking.showId,
           },
           select: { id: true, status: true },
@@ -264,7 +302,7 @@ export class BookingService extends BaseService<Booking> {
         // Update seats to AVAILABLE
         await tx.showSeat.updateMany({
           where: {
-            id: { in: seatIds },
+            id: { in: seatsToRelease },
             showId: booking.showId,
           },
           data: {
@@ -288,38 +326,60 @@ export class BookingService extends BaseService<Booking> {
 
       let paymentStatusUpdate = booking.paymentStatus;
       if (booking.paymentStatus === 'SUCCESS') {
-        paymentStatusUpdate = 'REFUNDED';
+        if (!isPartial) paymentStatusUpdate = 'REFUNDED';
         
         const payment = await tx.payment.findUnique({
           where: { bookingId },
         });
 
         if (payment && payment.transactionRef) {
-          await this.stripeService.createRefund(payment.transactionRef, Number(booking.totalAmount));
+          await this.stripeService.createRefund(payment.transactionRef, refundAmount);
           
-          await tx.payment.update({
-            where: { bookingId },
-            data: {
-              status: 'REFUNDED',
-            },
-          });
+          if (!isPartial) {
+            await tx.payment.update({
+              where: { bookingId },
+              data: {
+                status: 'REFUNDED',
+              },
+            });
+          }
         }
       } else if (booking.paymentStatus === 'PENDING') {
-        paymentStatusUpdate = 'FAILED';
+        if (!isPartial) paymentStatusUpdate = 'FAILED';
       }
 
-      // Update booking status
-      const updatedBooking = await tx.booking.update({
-        where: { id: bookingId },
-        data: {
-          bookingStatus: 'CANCELLED',
-          paymentStatus: paymentStatusUpdate,
-        },
-      });
+      let updatedBooking;
+      
+      if (!isPartial) {
+        // Update booking status
+        updatedBooking = await tx.booking.update({
+          where: { id: bookingId },
+          data: {
+            bookingStatus: 'CANCELLED',
+            paymentStatus: paymentStatusUpdate,
+          },
+        });
+      } else {
+        // Update booking totalAmount for partial cancel
+        updatedBooking = await tx.booking.update({
+          where: { id: bookingId },
+          data: {
+            totalAmount: Number(booking.totalAmount) - refundAmount,
+          },
+        });
+        
+        // Remove specific booking seat records
+        await tx.bookingSeat.deleteMany({
+          where: {
+            bookingId,
+            showSeatId: { in: seatsToRelease }
+          }
+        });
+      }
 
       return {
         showId: booking.showId,
-        seatIds,
+        seatIds: seatsToRelease,
         updatedBooking,
       };
     });
@@ -331,6 +391,8 @@ export class BookingService extends BaseService<Booking> {
         seatIds: result.seatIds,
         status: 'AVAILABLE',
       });
+      // Notify waitlist
+      this.waitlistService.notifyNextUser(result.showId).catch(err => console.error(err));
     }
 
     return {

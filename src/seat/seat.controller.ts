@@ -15,6 +15,7 @@ import { ScreenSeat } from '@prisma/client';
 
 import { SeatService } from './seat.service';
 import { CreateScreenSeatDto } from './dto/create-screen-seat.dto';
+import { BulkCreateScreenSeatDto } from './dto/bulk-create-screen-seat.dto';
 import { Role } from '../common/enums/role.enum';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { BaseController } from '../common/controllers/base.controller';
@@ -49,6 +50,26 @@ export class SeatController extends BaseController<
     createSeatDto: CreateScreenSeatDto,
   ) {
     return this.seatService.createScreenSeat(createSeatDto);
+  }
+
+  @Post('bulk')
+  @Auth(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Bulk create screen seats for a specific row',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Seats created successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or screen',
+  })
+  async bulkCreateScreenSeats(
+    @Body()
+    bulkDto: BulkCreateScreenSeatDto,
+  ) {
+    return this.seatService.bulkCreateScreenSeats(bulkDto);
   }
 
   @Get('show/:showId')

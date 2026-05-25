@@ -8,7 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateEventDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
@@ -29,6 +29,7 @@ export class CreateEventDto {
   @MaxLength(50)
   language?: string;
 
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(1)

@@ -13,6 +13,9 @@ import { ScreenModule } from './screen/screen.module';
 import { SeatModule } from './seat/seat.module';
 import { BookingModule } from './booking/booking.module';
 import { PaymentModule } from './payment/payment.module';
+import { ReviewModule } from './review/review.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logger/winston.config';
@@ -54,6 +57,9 @@ import { APP_GUARD } from '@nestjs/core';
     SeatModule,
     BookingModule,
     PaymentModule,
+    ReviewModule,
+    WaitlistModule,
+    AnalyticsModule,
   ],
 
   providers: [

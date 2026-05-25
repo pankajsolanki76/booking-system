@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BookingRepository } from './booking.repository';
 
 import { SeatRepository } from '../seat/seat.repository';
+import { WaitlistService } from '../waitlist/waitlist.service';
 
 @Injectable()
 export class BookingExpirationService {
@@ -18,6 +19,8 @@ export class BookingExpirationService {
     private readonly bookingRepository: BookingRepository,
 
     private readonly seatRepository: SeatRepository,
+
+    private readonly waitlistService: WaitlistService,
   ) {}
 
   /**
@@ -115,6 +118,9 @@ export class BookingExpirationService {
               status: 'AVAILABLE',
             });
             this.logger.log(`Released expired booking ${booking.id}`);
+            
+            // Notify waitlist
+            this.waitlistService.notifyNextUser(releasedInfo.showId).catch(err => this.logger.error(err));
           }
         } catch (error: unknown) {
           /**
